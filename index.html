@@ -3683,11 +3683,20 @@ function drawMap(){
   mctx.fillStyle='#74a845';for(const n of npcs){const nx=Math.floor(n.x/CELL),ny=Math.floor(n.z/CELL);if(inSpawn(nx,ny))continue;mctx.fillRect(ox+nx*s,oy+ny*s,s,s);}
   if(L.hint)for(const it of items){if(it.type!=='key'||it.taken)continue;const kx=ox+(Math.floor(it.x/CELL)+.5)*s,ky=oy+(Math.floor(it.z/CELL)+.5)*s,pr=3+((time*4)%4);
     mctx.fillStyle='#e6b53a';mctx.fillRect(kx-2.5,ky-2.5,5,5);mctx.strokeStyle='#e6b53a';mctx.lineWidth=1;mctx.strokeRect(kx-pr-1.5,ky-pr-1.5,pr*2+3,pr*2+3);}
+  mapSnap();mapPlayer();
+}
+/* the walls and rooms are redrawn a few times a second and cached; your arrow and other players are redrawn every frame so they move smoothly */
+let mcache=null;
+function mapSnap(){const c=$('map');if(!mcache)mcache=document.createElement('canvas');if(mcache.width!==c.width||mcache.height!==c.height){mcache.width=c.width;mcache.height=c.height;}const g=mcache.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,mcache.width,mcache.height);g.drawImage(c,0,0);mcache._ok=1;mcache._big=mapBig;}
+function mapPlayer(){
+  const W=L.W,H=L.H,s=Math.max(2,Math.floor(132/Math.max(W,H))),ox=(132-W*s)>>1,oy=(132-H*s)>>1;
+  mctx.setTransform(mapBig?5:1,0,0,mapBig?5:1,0,0);
   mctx.fillStyle='#3f8fe8';for(const id in MP.others){const g=MP.others[id];if(g.f===P.floor&&g.M)mctx.fillRect(ox+g.x/CELL*s-1.5,oy+g.z/CELL*s-1.5,3,3);}
   const px=ox+P.x/CELL*s,py=oy+P.z/CELL*s,afx=-Math.sin(P.yaw),afz=-Math.cos(P.yaw),aqx=-afz,aqz=afx;
   mctx.beginPath();mctx.moveTo(px+afx*5.5,py+afz*5.5);mctx.lineTo(px-afx*3+aqx*3.4,py-afz*3+aqz*3.4);mctx.lineTo(px-afx*1.2,py-afz*1.2);mctx.lineTo(px-afx*3-aqx*3.4,py-afz*3-aqz*3.4);mctx.closePath();
   mctx.fillStyle='#fff';mctx.fill();mctx.lineWidth=1;mctx.strokeStyle='#ff9426';mctx.stroke();
 }
+function mapFrame(){const c=$('map');if(PVP.on||!mcache||!mcache._ok||mcache._big!==mapBig||c.width!==mcache.width)return;mctx.setTransform(1,0,0,1,0,0);mctx.clearRect(0,0,c.width,c.height);mctx.drawImage(mcache,0,0);mapPlayer();}
 
 /* ---------------- combat ---------------- */
 function setEm(e,hex){for(const m of e.M.mats)m.emissive.setHex(hex);}
@@ -5817,7 +5826,7 @@ function weaponModel(w,accMat,icon){
   case 'crossbow':{const wd=V.long?.8:.62;M.mz=-.36;M.my=.055;M.ty=.07;
     M.b(.07,.08,.62,WD,0,0,0);M.b(wd,.045,.07,bs[0].c1,0,.02,-.26);M.b(.05,.07,.1,0x4a4a54,-wd/2,.02,-.22);M.b(.05,.07,.1,0x4a4a54,wd/2,.02,-.22);
     M.b(wd-.06,.012,.012,0xd8d0b8,0,.03,-.1);M.b(.02,.02,.4,0x8a6a44,0,.055,-.12);ac(.03,.03,.07,0,.055,-.34);ac(.075,.015,.3,0,.045,.12);
-    if(V.drum)M.b(.1,.12,.2,G,0,.1,0);panel(.076,.09,0,.3,.02);M.b(.06,.16,.07,WD,0,-.11,.18);orn(.045,.06,-.34,.03);hand(.01,-.12,.2);break;}
+    if(V.drum)M.b(.1,.12,.2,G,0,-.085,-.08);panel(.076,.09,0,.3,.02);M.b(.06,.16,.07,WD,0,-.11,.18);orn(.045,.06,-.34,.03);hand(.01,-.12,.2);break;}
   default:{const len=V.len,wd=V.wid,bl=0xc8ccd4;
     if(V.curve){M.b(.045,len*.55,wd,bl,0,.12+len*.275,0);M.b(.045,len*.5,wd*.9,bl,0,.12+len*.76,wd*.3).rotation.x=.22;}
     else{M.b(.045,len,wd,bl,0,.12+len/2,0);M.b(.045,.1,wd*.55,bl,0,.12+len+.04,0);}
@@ -5903,6 +5912,13 @@ function weaponModel(w,accMat,icon){
       for(let i=0;i<pl;i++)A(.056,.02,.02,0xf0c040,0,.16+i*.04,wd/2+.002,GLOW);
     }}
   return M;
+}
+/* while aiming down sights the gun turns see-through so it never hides the target */
+function vmFade(a){
+  const e=a*a*(3-2*a),op=1-.65*e,ms=((vmM&&vmM.mats)||[]).concat([vmAccent]);
+  for(const m of ms){const u=m.userData;if(u.o0===undefined){u.o0=m.opacity;u.t0=m.transparent;u.d0=m.depthWrite;}
+    if(e<.001){if(u.f){m.opacity=u.o0;m.transparent=u.t0;m.depthWrite=u.d0;u.f=0;}}
+    else{m.opacity=u.o0*op;m.transparent=true;m.depthWrite=false;u.f=1;}}
 }
 function buildVm(w){if(vmM){vm.remove(vmM.g);vmM.mats.forEach(m=>m.dispose());if(vmM.mg)vmM.mg.forEach(x=>x.dispose());}vmM=weaponModel(w,vmAccent,false);vm.add(vmM.g);}
 const icoScene=new T.Scene(),icoCam=new T.OrthographicCamera(-1,1,.5,-.5,.01,20),icoRT=new T.WebGLRenderTarget(128,64),wImg={};
@@ -7357,7 +7373,7 @@ function frame(now){
   if(state==='play'){
     updPlayer(dt);if(state==='play'){updEnemies(dt);updProjs(dt);updWorld(dt);}
     placeCam();updParticles(dt);if(OPEN)updOpen(dt);
-    mapT-=dt;if(TP){TP.t-=dt;if(TP.t<=0)setMapBig(false);}if(mapBig&&(state!=='play'||PVP.on))setMapBig(false);if(mapT<=0){mapT=.3;if(!OPEN)drawMap();}
+    mapT-=dt;if(TP){TP.t-=dt;if(TP.t<=0)setMapBig(false);}if(mapBig&&(state!=='play'||PVP.on))setMapBig(false);if(mapT<=0){mapT=.3;if(!OPEN)drawMap();}else if(!OPEN)mapFrame();
     hudAcc+=dt;if(hudAcc>=.05){hudAcc=0;hudUpdate();}
   }else if(state==='title'){
     P.yaw+=dt*.12;placeCam();updWorld(dt);updParticles(dt);
@@ -7405,6 +7421,7 @@ function frame(now){
           vm.visible=!(opt&&w.c==='sniper'&&ads>.72);
           if(vmM&&vmM.sg)vmM.sg.visible=!(opt&&ads>.5);
         }else{vm.visible=true;if(vmM&&vmM.sg)vmM.sg.visible=true;}}
+        vmFade(CLS[w.c].slot==='gun'?(P.ads||0):0);
         if(P.swing>0){const t=1-P.swing,mx=(a,b,e)=>a+(b-a)*e,ix=px,iy=py;
           if(t<.3){const q=t/.3,e=q*q*(3-2*q);px=mx(ix,ix+.1,e);py=mx(iy,iy+.2,e);rz=-.45*e;rx=.35*e;ry=mx(.1,-.1,e);}
           else if(t<.6){const q=(t-.3)/.3,e=1-(1-q)*(1-q);px=mx(ix+.1,ix-.4,e);py=mx(iy+.2,iy+.1,e);rz=mx(-.45,1.15,e);rx=mx(.35,-.25,e);ry=mx(-.1,.4,e);pz-=.1*Math.sin(e*Math.PI);}
