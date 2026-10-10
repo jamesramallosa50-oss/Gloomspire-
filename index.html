@@ -9222,9 +9222,9 @@ fixBar();buildTitleLevel();resize();requestAnimationFrame(frame);
 </script>
 
 <style>
-#patchtab{position:fixed;right:0;top:42%;transform:translateY(-50%);writing-mode:vertical-rl;text-orientation:mixed;z-index:6;padding:14px 9px;background:#2a1a0c;color:#ffd9a0;border:2px solid var(--ember);border-right:0;border-radius:8px 0 0 8px;font:700 13px ui-monospace,monospace;letter-spacing:.14em;cursor:pointer;box-shadow:-2px 0 14px rgba(255,148,38,.25)}
+#patchtab{position:fixed;left:max(10px,env(safe-area-inset-left,0px));bottom:max(10px,env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:8px;z-index:6;padding:9px 14px;background:#2a1a0c;color:#ffd9a0;border:2px solid var(--ember);border-radius:8px;font:700 13px ui-monospace,monospace;letter-spacing:.1em;cursor:pointer;box-shadow:0 0 14px rgba(255,148,38,.25)}
 #patchtab:hover{background:#3b2410}
-#patchdot{display:none;width:9px;height:9px;border-radius:50%;background:var(--ember);margin-top:8px;align-self:center;box-shadow:0 0 8px var(--ember)}
+#patchdot{display:none;width:9px;height:9px;border-radius:50%;background:var(--ember);box-shadow:0 0 8px var(--ember)}
 #patchtab.new #patchdot{display:block}
 #patch{background:rgba(6,8,7,.97);justify-content:flex-start;text-align:left;z-index:30}
 #patch h2,#patch>.dim{text-align:center;width:100%;margin:0}
