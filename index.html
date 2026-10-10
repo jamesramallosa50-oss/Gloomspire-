@@ -2679,8 +2679,11 @@ function orbTick(dt){
   orbG.visible=state==='play';const cap=(30+3*P.lvl)*(EV()?1.5:1);
   for(let i=0;i<ORB.length;i++){
     const o=ORB[i],m=orbG.children[i],an=time*1.5+i*1.2566,pop=P.orbPop[i]=Math.max(0,P.orbPop[i]-dt*2.2);
-    m.position.set(P.x+Math.cos(an)*1.05,1.35+Math.sin(time*2.4+i*2)*.13+P.y,P.z+Math.sin(an)*1.05);m.scale.setScalar(1+pop*1.1);
-    if(Math.random()<dt*7)spark(m.position.x,m.position.y,m.position.z,rnd(-.2,.2),rnd(.1,.5),rnd(-.2,.2),.45,o.rgb,0);
+    m.position.set(P.x+Math.cos(an)*1.05,1.35+Math.sin(time*2.4+i*2)*.13+P.y,P.z+Math.sin(an)*1.05);
+    /* first person: fade an orb out while it is in front of you (or while aiming) so it never blocks the view */
+    {const fc=(Math.cos(an)*-Math.sin(P.yaw)+Math.sin(an)*-Math.cos(P.yaw)),tv=Math.max(0,Math.min(1,(.2-fc)/.5))*Math.max(0,1-(P.ads||0)*2.2),ov=m.userData.v===undefined?tv:m.userData.v;
+      m.userData.v=ov+(tv-ov)*Math.min(1,dt*12);m.visible=m.userData.v>.03;m.scale.setScalar((1+pop*1.1)*Math.max(.001,m.userData.v));}
+    if(m.visible&&Math.random()<dt*7)spark(m.position.x,m.position.y,m.position.z,rnd(-.2,.2),rnd(.1,.5),rnd(-.2,.2),.45,o.rgb,0);
     if(!(P.hp>0))continue;
     if(i===0&&P.ward>0&&P.ward<=cap)P.wardT=Math.max(P.wardT||0,3);
     P.orbT[i]-=dt;if(P.orbT[i]>0)continue;
@@ -3627,9 +3630,12 @@ function hudUpdate(){hudFace();
   const tg=$('target');
   if(0){tg.hidden=false;$('tname').textContent=target.name;$('thp').style.width=(target.hp/target.maxHp*100)+'%';}else tg.hidden=true;
 }
-const mctx=$('map').getContext('2d');let mapT=0,mapBig=false,TP=null;
+const mctx=$('map').getContext('2d');let mapT=0,mapBig=false,TP=null,MK=1;
+/* backing-store scale: 1 canvas unit = 1/132 of the map; match the displayed pixel size so nothing snaps to a coarse grid */
+function mapK(){if(mapBig)return 5;const c=$('map'),w=c.clientWidth;return w>0?Math.max(1,Math.min(4,Math.ceil(w*(window.devicePixelRatio||1)/132))):MK;}
+function mapRes(){const c=$('map'),k=mapK();if(k===MK&&c.width===132*k)return;MK=k;c.width=c.height=132*k;if(typeof L!=='undefined'&&L&&state==='play'&&!PVP.on)try{drawMap();}catch(e){}}
 function setMapBig(on){
-  if(PVP.on)on=false;if(!on&&TP)tpEnd(false);mapBig=!!on;if(!on)$('maphint').textContent='Tap the map or press N to close';const c=$('map'),k=mapBig?5:1;c.width=c.height=132*k;c.classList.toggle('big',mapBig);$('maphint').hidden=!mapBig;if(mapBig)drawMap();
+  if(PVP.on)on=false;if(!on&&TP)tpEnd(false);mapBig=!!on;if(!on)$('maphint').textContent='Tap the map or press N to close';const c=$('map');c.classList.toggle('big',mapBig);MK=mapK();c.width=c.height=132*MK;$('maphint').hidden=!mapBig;drawMap();
 }
 /* ---- Worldstep (Rewind + Blink): pick any spot on the open map and step there ---- */
 function tpOpen(X){
@@ -3666,7 +3672,7 @@ function tpClick(e){
 }
 function drawMap(){
   if(PVP.on)return;
-  mctx.setTransform(mapBig?5:1,0,0,mapBig?5:1,0,0);mctx.imageSmoothingEnabled=false;
+  mctx.setTransform(MK,0,0,MK,0,0);mctx.imageSmoothingEnabled=false;
   const W=L.W,H=L.H,s=Math.max(2,Math.floor(132/Math.max(W,H))),ox=(132-W*s)>>1,oy=(132-H*s)>>1;
   mctx.clearRect(0,0,132,132);
   const startRoom=L.rooms[L.start];
@@ -3690,7 +3696,7 @@ let mcache=null;
 function mapSnap(){const c=$('map');if(!mcache)mcache=document.createElement('canvas');if(mcache.width!==c.width||mcache.height!==c.height){mcache.width=c.width;mcache.height=c.height;}const g=mcache.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,mcache.width,mcache.height);g.drawImage(c,0,0);mcache._ok=1;mcache._big=mapBig;}
 function mapPlayer(){
   const W=L.W,H=L.H,s=Math.max(2,Math.floor(132/Math.max(W,H))),ox=(132-W*s)>>1,oy=(132-H*s)>>1;
-  mctx.setTransform(mapBig?5:1,0,0,mapBig?5:1,0,0);
+  mctx.setTransform(MK,0,0,MK,0,0);mctx.imageSmoothingEnabled=true;
   mctx.fillStyle='#3f8fe8';for(const id in MP.others){const g=MP.others[id];if(g.f===P.floor&&g.M)mctx.fillRect(ox+g.x/CELL*s-1.5,oy+g.z/CELL*s-1.5,3,3);}
   const px=ox+P.x/CELL*s,py=oy+P.z/CELL*s,afx=-Math.sin(P.yaw),afz=-Math.cos(P.yaw),aqx=-afz,aqz=afx;
   mctx.beginPath();mctx.moveTo(px+afx*5.5,py+afz*5.5);mctx.lineTo(px-afx*3+aqx*3.4,py-afz*3+aqz*3.4);mctx.lineTo(px-afx*1.2,py-afz*1.2);mctx.lineTo(px-afx*3-aqx*3.4,py-afz*3-aqz*3.4);mctx.closePath();
@@ -5837,7 +5843,7 @@ function weaponModel(w,accMat,icon){
     M.b(.05,w.v===2?.3:.18,.06,WD,0,w.v===2?-.06:0,0);M.b(.07,.07,.07,bs[0].c2,0,w.v===2?-.23:-.11,0);if(!icon)M.b(.11,.13,.13,HAND,0,-.01,.01);
     M.g.rotation.set(-.5,0,.42);M.g.position.set(.1,-.12,.05);M.g.scale.setScalar(.7);}
   }
-  {const fT=V.fat?1.35:1,SYL={rifle:.103,smg:.103,shotgun:.1,sniper:.08,revolver:.1*fT+.015,crossbow:.07,rpg:.21};
+  {const fT=V.fat?1.35:1,SYL={rifle:.103,smg:.103,shotgun:.1,sniper:.08,revolver:.1*fT+.015,crossbow:.1,rpg:.21};
     M.sy=(SYL[w.c]||.1)+M.g.position.y;M.sx=(w.c==='rpg'?.09*fT:0)+M.g.position.x;}
   if(!icon||icon==='att'){const A=(a,h,d,c,x,y,z,o)=>M.b(a,h,d,c,x,y,z,null,o),n=id=>attW(id,w.c),pl=Math.min(6,w.plus||0);
     if(CLS[w.c].slot==='gun'){const mz=M.mz,my=M.my,ty=M.ty;
@@ -5915,7 +5921,7 @@ function weaponModel(w,accMat,icon){
 }
 /* while aiming down sights the gun turns see-through so it never hides the target */
 function vmFade(a){
-  const e=a*a*(3-2*a),op=1-.65*e,ms=((vmM&&vmM.mats)||[]).concat([vmAccent]);
+  const e=a*a*(3-2*a),op=1-.75*e,ms=((vmM&&vmM.mats)||[]).concat([vmAccent]);
   for(const m of ms){const u=m.userData;if(u.o0===undefined){u.o0=m.opacity;u.t0=m.transparent;u.d0=m.depthWrite;}
     if(e<.001){if(u.f){m.opacity=u.o0;m.transparent=u.t0;m.depthWrite=u.d0;u.f=0;}}
     else{m.opacity=u.o0*op;m.transparent=true;m.depthWrite=false;u.f=1;}}
@@ -7326,7 +7332,7 @@ function padMapUi(){const e=$('padmapb');if(e)e.textContent='Controller layout: 
 $('padmapb').addEventListener('click',()=>{meta.padmap=PMO[(PMO.indexOf(meta.padmap||'auto')+1)%PMO.length];pad.lay=null;pad.prev=[];save();padMapUi();});padMapUi();
 const MSZ={auto:'Auto',small:'Small',medium:'Medium',large:'Large',huge:'Huge'},MSO=['auto','small','medium','large','huge'];
 const mapSzGet=()=>meta.mapsz||(isTouch?'auto':'large');/* laptops and desktops start with a large minimap */
-function mapSzApply(){const c=$('map');for(const k of MSO)c.classList.remove('msz-'+k);c.classList.add('msz-'+mapSzGet());const b=$('mapszb');if(b)b.textContent='Minimap size: '+MSZ[mapSzGet()];}
+function mapSzApply(){const c=$('map');for(const k of MSO)c.classList.remove('msz-'+k);c.classList.add('msz-'+mapSzGet());try{mapRes();}catch(e){}const b=$('mapszb');if(b)b.textContent='Minimap size: '+MSZ[mapSzGet()];}
 $('mapszb').addEventListener('click',()=>{meta.mapsz=MSO[(MSO.indexOf(mapSzGet())+1)%MSO.length];save();mapSzApply();});mapSzApply();
 const flickUi=()=>{$('flickb').textContent='Flick stick (controller): '+(meta.flick?'on':'off');};flickUi();
 $('flickb').addEventListener('click',()=>{meta.flick=!meta.flick;pad.fs=false;pad.rem=0;save();flickUi();});
@@ -7361,7 +7367,7 @@ function resize(){
   if(!$('hud').hidden)gameEl.style.setProperty('--barh',$('bar').offsetHeight+'px');
   vmCam.fov=a<1?86:58;for(const c of[cam,vmCam,shaft.c]){c.aspect=a;c.updateProjectionMatrix();}
 }
-addEventListener('resize',resize);
+addEventListener('resize',resize);addEventListener('resize',()=>{try{mapRes();}catch(e){}});
 let last=performance.now(),hudAcc=0;
 function frame(now){
   requestAnimationFrame(frame);
@@ -7414,11 +7420,11 @@ function frame(now){
           const e=ads*ads*(3-2*ads),opt=attW('scope',curW()&&curW().c)>0&&meta.scopeStyle!=='none';
           /* line the gun's own sight up with the screen centre, then drop the gun a touch so the crosshair sits above the iron sight */
           const sy=(vmM&&vmM.sy)||.1,sx=(vmM&&vmM.sx)||0;
-          const ax=-sx,ay=-sy-(opt?0:.024),az=opt?-.3:-.4;
+          const ax=-sx,ay=-sy-(opt?0:.04),az=opt?-.3:-.4;
           px+=(ax-px)*e;py+=(ay-py)*e;pz+=(az-pz)*e;
           rx+=(P.recoil*.03-rx)*e;ry+=(0-ry)*e;rz+=(0-rz)*e;
           /* fully looking down a sniper scope: hide the gun body */
-          vm.visible=!(opt&&w.c==='sniper'&&ads>.72);
+          vm.visible=!(opt&&ads>(w.c==='sniper'?.72:.6));
           if(vmM&&vmM.sg)vmM.sg.visible=!(opt&&ads>.5);
         }else{vm.visible=true;if(vmM&&vmM.sg)vmM.sg.visible=true;}}
         vmFade(CLS[w.c].slot==='gun'?(P.ads||0):0);
