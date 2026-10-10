@@ -4303,6 +4303,9 @@ function explode(x,y,z,rad,dmg){
   for(const e of enemies.slice()){if(e.dead)continue;const d=Math.hypot(e.x-x,e.z-z,(e.y+e.h*.5)-y);if(d<rad+e.r)hurtEnemy(e,dmg*(1-.5*Math.min(1,d/rad)));}
   for(const u of urns)if(!u.taken&&Math.hypot(u.x-x,u.z-z)<rad)breakUrn(u);
 }
+/* PvP hitbox: follows the character silhouette (legs / torso / head) instead of one fat cylinder.
+   hf = 0 at the feet, 1 at the top of the head. Returns the half-width at that height, or -1 outside the body. */
+function pvSil(hf){if(hf<0||hf>1)return -1;return hf<.08?.14:hf<.5?.17:hf<.8?.25:hf<.86?.1:.135;}
 function updProjs(dt){
   for(let i=projs.length-1;i>=0;i--){
     const p=projs[i];
@@ -4321,7 +4324,7 @@ function updProjs(dt){
       if(p.tgt){const e=p.tgt;let tx=e.x-p.x,ty=e.y+e.h*.55-p.y,tz=e.z-p.z;const tl=Math.hypot(tx,ty,tz)||1,k=Math.min(1,dt*(3+p.age*8));
         p.dx+=(tx/tl-p.dx)*k;p.dy+=(ty/tl-p.dy)*k;p.dz+=(tz/tl-p.dz)*k;const l=Math.hypot(p.dx,p.dy,p.dz)||1;p.dx/=l;p.dy/=l;p.dz/=l;p.m.lookAt(p.x+p.dx,p.y+p.dy,p.z+p.dz);}
     }
-    const dist=p.spd*dt,n=Math.max(1,Math.ceil(dist/.45)),st=dist/n;
+    const dist=p.spd*dt,n=Math.max(1,Math.ceil(dist/(PVP.on?.08:.45))),st=dist/n;
     for(let s=0;s<n&&!dead;s++){
       p.x+=p.dx*st;p.y+=p.dy*st;p.z+=p.dz*st;
       if(p.from==='p'&&p.y<.14&&p.y>-.5){for(const e of enemies){if(e.dead||(p.hit&&p.hit.has(e)))continue;const ex=e.x-p.x,ez=e.z-p.z,rr=e.r+p.r+.12;if(ex*ex+ez*ez<rr*rr&&e.y<.3){p.y=Math.max(p.y,.12);break;}}}
@@ -4329,14 +4332,19 @@ function updProjs(dt){
       if(p.from==='p'){
         if(p.y<.8)for(const u of urns){if(!u.taken&&(u.x-p.x)**2+(u.z-p.z)**2<.2)breakUrn(u);}
         for(const e of enemies){
-          if(e.dead||(p.hit&&p.hit.has(e)))continue;const ex=e.x-p.x,ez=e.z-p.z,rr=e.r+p.r+(p.y<e.y+e.h*.5?.1:0);
-          if(ex*ex+ez*ez<rr*rr&&p.y>e.y-.12&&p.y<e.y+e.h+.15){
+          if(e.dead||(p.hit&&p.hit.has(e)))continue;const ex=e.x-p.x,ez=e.z-p.z;
+          let rr,yok;
+          if(e.pv&&!p.blast&&!p.fuse){const sr=pvSil((p.y-e.y)/e.h);rr=sr<0?0:sr+Math.min(p.r,.04);yok=sr>=0;}
+          else{rr=e.r+p.r+(p.y<e.y+e.h*.5?.1:0);yok=p.y>e.y-.12&&p.y<e.y+e.h+.15;}
+          if(yok&&ex*ex+ez*ez<rr*rr){
             if(p.blast||p.fuse){dead=true;break;}
             {const lo=(p.y-e.y)<e.h*.45,hs=(p.y-e.y)>=e.h*.78;PVZ=lo&&e.pv?.85:1;PVH=!!(e.pv&&hs);PVL=!!(p.snp&&PVH);PVM=p.pvm||1;PVS=!!p.sp;const bodyHit=p.from==='p'&&!PVP.on&&!e.pv&&p.kind!=='pellet'&&p.kind!=='rocket'&&!!GK[p.kind]&&(p.y-e.y)<e.h*.78;hurtEnemy(e,p.dmg*(bodyHit?.6:1),p.crit);PVS=false;PVZ=1;PVL=false;PVH=false;PVM=1;}if(p.kind==='lance'&&!e.dead)e.slow=2.5;if(p.poison&&!e.dead)poison(e,p.poison);if(p.stun&&!e.dead&&!e.boss)e.stun=Math.max(e.stun,p.stun);if(p.slowHit&&!e.dead)e.slow=Math.max(e.slow,p.slowHit);
             if(p.pierce>0){p.pierce--;(p.hit||(p.hit=new Set())).add(e);}else dead=true;
             break;}
         }
-      }else if(p.from==='e'){const ex=P.x-p.x,ez=P.z-p.z,rr=PR+p.r;if(ex*ex+ez*ez<rr*rr&&p.y>.1+P.y&&p.y<(P.slide>0?1.05:1.95)+P.y){hurtP(p.dmg,{x:p.x-p.dx*4,z:p.z-p.dz*4,name:p.who});dead=true;}}
+      }else if(p.from==='e'){const ex=P.x-p.x,ez=P.z-p.z;let rr=PR+p.r,yok=p.y>.1+P.y&&p.y<(P.slide>0?1.05:1.95)+P.y;
+        if(PVP.on&&p.kind!=='fireball'){const ph=P.slide>0?1.05:1.8,sr=pvSil((p.y-P.y)/ph);rr=sr<0?0:sr+Math.min(p.r,.04);yok=sr>=0;}
+        if(yok&&ex*ex+ez*ez<rr*rr){hurtP(p.dmg,{x:p.x-p.dx*4,z:p.z-p.dz*4,name:p.who});dead=true;}}
     }
     if(p.trail&&Math.random()<.7)spark(p.x,p.y,p.z,rnd(-.4,.4),rnd(-.2,.6),rnd(-.4,.4),.3,p.trail,-.1);
     if(dead){
