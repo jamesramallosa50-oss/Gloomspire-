@@ -51,7 +51,7 @@ body{margin:0;background:var(--void);color:var(--bone);font-family:var(--f-body)
 #curse{font-family:var(--f-display);font-size:9px;color:var(--blood);text-shadow:1px 1px 0 var(--void)}
 #target{flex:1;max-width:260px;text-align:center;min-width:0}
 #tname{display:block;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#map{width:132px;height:132px;image-rendering:pixelated;background:rgba(6,8,7,.6);border:2px solid var(--stone-3);flex:none;pointer-events:auto;cursor:pointer}
+#map{width:132px;height:132px;image-rendering:auto;background:rgba(6,8,7,.6);border:2px solid var(--stone-3);flex:none;pointer-events:auto;cursor:pointer}
 #map.msz-small:not(.big){width:132px!important;height:132px!important}#map.msz-medium:not(.big){width:184px!important;height:184px!important}#map.msz-large:not(.big){width:240px!important;height:240px!important}#map.msz-huge:not(.big){width:320px!important;height:320px!important}
 #map.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88vh,88vw,720px);height:min(88vh,88vw,720px);z-index:5;background:rgba(6,8,7,.88);border-color:var(--ember);pointer-events:auto;cursor:pointer}
 #maphint{position:fixed;left:50%;bottom:3%;transform:translateX(-50%);z-index:6;font-size:9px;letter-spacing:1px;color:#cfc7ae;background:rgba(6,8,7,.75);padding:6px 10px;pointer-events:auto;touch-action:manipulation;cursor:pointer}
@@ -3632,8 +3632,9 @@ function hudUpdate(){hudFace();
   if(0){tg.hidden=false;$('tname').textContent=target.name;$('thp').style.width=(target.hp/target.maxHp*100)+'%';}else tg.hidden=true;
 }
 const mctx=$('map').getContext('2d');let mapT=0,mapBig=false,TP=null;
+let mapSt=null,mapStL=null,mapStTP=false,mapDirty=true,MG={bs:132,s:3,ox:0,oy:0,u:1};
 function setMapBig(on){
-  if(PVP.on)on=false;if(!on&&TP)tpEnd(false);mapBig=!!on;if(!on)$('maphint').textContent='Tap the map or press N to close';const c=$('map'),k=mapBig?5:1;c.width=c.height=132*k;c.classList.toggle('big',mapBig);$('maphint').hidden=!mapBig;if(mapBig)drawMap();
+  if(PVP.on)on=false;if(!on&&TP)tpEnd(false);mapBig=!!on;if(!on)$('maphint').textContent='Tap the map or press N to close';const c=$('map');c.classList.toggle('big',mapBig);mapDirty=true;$('maphint').hidden=!mapBig;if(mapBig)drawMap();
 }
 /* ---- Worldstep (Rewind + Blink): pick any spot on the open map and step there ---- */
 function tpOpen(X){
@@ -3658,39 +3659,67 @@ function tpCell(cx,cy){
   return best;
 }
 function tpClick(e){
+  drawMap(true);
   const c=$('map'),r=c.getBoundingClientRect(),w=c.clientWidth||r.width,hh=c.clientHeight||r.height,
-    fx=(e.clientX-r.left-(c.clientLeft||0))/w*132,fy=(e.clientY-r.top-(c.clientTop||0))/hh*132,
-    W=L.W,H=L.H,s=Math.max(2,Math.floor(132/Math.max(W,H))),ox=(132-W*s)>>1,oy=(132-H*s)>>1,
-    t=tpCell(Math.floor((fx-ox)/s),Math.floor((fy-oy)/s));
+    fx=(e.clientX-r.left-(c.clientLeft||0))/w*MG.bs,fy=(e.clientY-r.top-(c.clientTop||0))/hh*MG.bs,
+    t=tpCell(Math.floor((fx-MG.ox)/MG.s),Math.floor((fy-MG.oy)/MG.s));
   if(!t){msg('Only rooms you have already entered.','bad','fuse');sfx('locked');return;}
   const ox0=P.x,oz0=P.z;tpEnd(true);setMapBig(false);
   burst(ox0,1,oz0,24,[.77,.55,1],2,.5,0);pillarFx(ox0,oz0,.7,0xc58bff,.5);
   P.x=wx(t.x);P.z=wx(t.y);P.vx=P.vz=0;P.slide=0;P.y=0;P.vy=0;P.trapI=.6;P.fovK=1;calcFlow();reveal();
   burst(P.x,1,P.z,24,[.77,.55,1],2,.5,0);ringFx(P.x,P.z,2.6,.4,0xc58bff,.45);runeFx(P.x,P.z,1.4,0xc58bff,1,1);sfx('blink');sfx('mend');
 }
-function drawMap(){
-  if(PVP.on)return;
-  mctx.setTransform(mapBig?5:1,0,0,mapBig?5:1,0,0);mctx.imageSmoothingEnabled=false;
-  const W=L.W,H=L.H,s=Math.max(2,Math.floor(132/Math.max(W,H))),ox=(132-W*s)>>1,oy=(132-H*s)>>1;
-  mctx.clearRect(0,0,132,132);
+/* ---- minimap: drawn at real screen resolution, map layer cached, player/NPCs redrawn every frame ---- */
+let mapSigV=-1,MS={x:0,z:0,yaw:0,L:null,t:0};
+function mapSig(){const W=L.W,H=L.H;let n=0,t=0,d=0;for(let i=0,l=W*H;i<l;i++)if(explored[i])n++;for(const it of items)if(it.taken)t++;for(const k in L.doorAt)if(L.doorAt[k].open>.5)d++;return n*1e7+t*1e4+items.length*10+d*1e-3+(TP?1:0);}
+function mapMeasure(){
+  const c=$('map'),W=L.W,H=L.H;
+  const css=Math.max(48,c.clientWidth||132);
+  const bs=Math.min(1024,Math.max(96,Math.round(css*Math.min(window.devicePixelRatio||1,2))));
+  if(c.width!==bs||c.height!==bs){c.width=bs;c.height=bs;}
+  const s=bs/Math.max(W,H);
+  MG={bs:bs,s:s,ox:(bs-W*s)/2,oy:(bs-H*s)/2,u:bs/132};
+}
+function mapStatic(){
+  mapMeasure();
+  const bs=MG.bs,s=MG.s,ox=MG.ox,oy=MG.oy,W=L.W,H=L.H;
+  if(!mapSt)mapSt=document.createElement('canvas');
+  if(mapSt.width!==bs||mapSt.height!==bs){mapSt.width=bs;mapSt.height=bs;}
+  const g=mapSt.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,bs,bs);
+  const X=x=>Math.round(ox+x*s),Y=y=>Math.round(oy+y*s);
+  const cell=(x,y)=>{const x0=X(x),y0=Y(y);g.fillRect(x0,y0,X(x+1)-x0,Y(y+1)-y0);};
   const startRoom=L.rooms[L.start];
   const inSpawn=(cx,cy)=>startRoom&&cx>=startRoom.x0&&cx<=startRoom.x1&&cy>=startRoom.y0&&cy<=startRoom.y1;
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const k=y*W+x;const seen=explored[k];if(!seen)continue;const g=L.grid[k];if(g!==3&&(inSpawn(x,y)||(L.spawnHall&&L.spawnHall.has(k))||(L.sStub&&L.sStub.door&&k===L.sStub.door.y*W+L.sStub.door.x)))continue;
-    if(!seen){if(g===1){mctx.fillStyle='#2f352f';mctx.fillRect(ox+x*s,oy+y*s,s,s);}continue;}
-    if(g===2){const d=L.doorAt[k];mctx.fillStyle=d.open>.5?'#5a5a50':d.type==='shut'?'#525a50':d.type==='key'?'#e6b53a':d.type==='seal'?'#b8181d':d.type==='exit'?'#ff9426':'#8a6038';}
-    else{if(g===4)continue;mctx.fillStyle=g===3?'#ff9426':L.roomOf[k]>=0?(TP&&L.entered&&L.entered.has(L.roomOf[k])&&L.roomOf[k]!==L.start?'#a98aff':'#6f7a6c'):'#525a50';}
-    mctx.fillRect(ox+x*s,oy+y*s,s,s);}
-  mctx.fillStyle='#b8181d';for(const t of traps)if(explored[t.y*W+t.x]&&!inSpawn(t.x,t.y)&&!(L.spawnHall&&L.spawnHall.has(t.y*W+t.x)))mctx.fillRect(ox+t.x*s+1,oy+t.y*s+1,s-2,s-2);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const k=y*W+x;if(!explored[k])continue;const gr=L.grid[k];if(gr!==3&&(inSpawn(x,y)||(L.spawnHall&&L.spawnHall.has(k))||(L.sStub&&L.sStub.door&&k===L.sStub.door.y*W+L.sStub.door.x)))continue;
+    if(gr===2){const d=L.doorAt[k];g.fillStyle=d.open>.5?'#5a5a50':d.type==='shut'?'#525a50':d.type==='key'?'#e6b53a':d.type==='seal'?'#b8181d':d.type==='exit'?'#ff9426':'#8a6038';}
+    else{if(gr===4)continue;g.fillStyle=gr===3?'#ff9426':L.roomOf[k]>=0?(TP&&L.entered&&L.entered.has(L.roomOf[k])&&L.roomOf[k]!==L.start?'#a98aff':'#6f7a6c'):'#525a50';}
+    cell(x,y);}
+  const ins=Math.max(1,Math.round(s*.22));
+  g.fillStyle='#b8181d';for(const t of traps)if(explored[t.y*W+t.x]&&!inSpawn(t.x,t.y)&&!(L.spawnHall&&L.spawnHall.has(t.y*W+t.x))){const x0=X(t.x),y0=Y(t.y);g.fillRect(x0+ins,y0+ins,Math.max(1,X(t.x+1)-x0-ins*2),Math.max(1,Y(t.y+1)-y0-ins*2));}
   for(const it of items){if(it.taken)continue;const cx=Math.floor(it.x/CELL),cy=Math.floor(it.z/CELL);if(!explored[cy*W+cx]||inSpawn(cx,cy))continue;
     if(it.type==='urn'||it.type==='barrel'||it.type==='ore')continue;
-    mctx.fillStyle=it.type==='shrine'?'#f0c040':it.type==='mimic'?'#dcd2b4':it.type==='lore'?'#6ff0ff':it.type==='font'?'#40b0ff':it.type==='key'?'#e6b53a':it.type==='chest'?'#dcd2b4':it.type==='hp'?'#b8181d':'#3f8fe8';mctx.fillRect(ox+cx*s,oy+cy*s,s,s);}
-  mctx.fillStyle='#74a845';for(const n of npcs){const nx=Math.floor(n.x/CELL),ny=Math.floor(n.z/CELL);if(inSpawn(nx,ny))continue;mctx.fillRect(ox+nx*s,oy+ny*s,s,s);}
-  if(L.hint)for(const it of items){if(it.type!=='key'||it.taken)continue;const kx=ox+(Math.floor(it.x/CELL)+.5)*s,ky=oy+(Math.floor(it.z/CELL)+.5)*s,pr=3+((time*4)%4);
-    mctx.fillStyle='#e6b53a';mctx.fillRect(kx-2.5,ky-2.5,5,5);mctx.strokeStyle='#e6b53a';mctx.lineWidth=1;mctx.strokeRect(kx-pr-1.5,ky-pr-1.5,pr*2+3,pr*2+3);}
-  mctx.fillStyle='#3f8fe8';for(const id in MP.others){const g=MP.others[id];if(g.f===P.floor&&g.M)mctx.fillRect(ox+g.x/CELL*s-1.5,oy+g.z/CELL*s-1.5,3,3);}
-  const px=ox+P.x/CELL*s,py=oy+P.z/CELL*s,afx=-Math.sin(P.yaw),afz=-Math.cos(P.yaw),aqx=-afz,aqz=afx;
-  mctx.beginPath();mctx.moveTo(px+afx*5.5,py+afz*5.5);mctx.lineTo(px-afx*3+aqx*3.4,py-afz*3+aqz*3.4);mctx.lineTo(px-afx*1.2,py-afz*1.2);mctx.lineTo(px-afx*3-aqx*3.4,py-afz*3-aqz*3.4);mctx.closePath();
-  mctx.fillStyle='#fff';mctx.fill();mctx.lineWidth=1;mctx.strokeStyle='#ff9426';mctx.stroke();
+    g.fillStyle=it.type==='shrine'?'#f0c040':it.type==='mimic'?'#dcd2b4':it.type==='lore'?'#6ff0ff':it.type==='font'?'#40b0ff':it.type==='key'?'#e6b53a':it.type==='chest'?'#dcd2b4':it.type==='hp'?'#b8181d':'#3f8fe8';cell(cx,cy);}
+}
+function drawMap(force){
+  if(PVP.on||!L||!L.grid)return;
+  if(force||mapDirty||mapStL!==L||mapStTP!==!!TP||!mapSt){mapStatic();mapStL=L;mapStTP=!!TP;mapDirty=false;}
+  const m=mctx,bs=MG.bs,s=MG.s,ox=MG.ox,oy=MG.oy,u=MG.u,W=L.W;
+  m.setTransform(1,0,0,1,0,0);m.clearRect(0,0,bs,bs);m.drawImage(mapSt,0,0);
+  const startRoom=L.rooms[L.start];
+  const inSpawn=(cx,cy)=>startRoom&&cx>=startRoom.x0&&cx<=startRoom.x1&&cy>=startRoom.y0&&cy<=startRoom.y1;
+  /* NPCs at their exact position, so they glide instead of hopping cell to cell */
+  const nd=Math.max(s*.8,2.4*u);m.fillStyle='#74a845';
+  for(const n of npcs){const nx=Math.floor(n.x/CELL),ny=Math.floor(n.z/CELL);if(inSpawn(nx,ny))continue;m.fillRect(ox+n.x/CELL*s-nd/2,oy+n.z/CELL*s-nd/2,nd,nd);}
+  if(L.hint)for(const it of items){if(it.type!=='key'||it.taken)continue;const kx=ox+(it.x/CELL)*s,ky=oy+(it.z/CELL)*s,pr=(3+((time*4)%4))*u;
+    m.fillStyle='#e6b53a';m.fillRect(kx-2.5*u,ky-2.5*u,5*u,5*u);m.strokeStyle='#e6b53a';m.lineWidth=u;m.strokeRect(kx-pr-1.5*u,ky-pr-1.5*u,pr*2+3*u,pr*2+3*u);}
+  m.fillStyle='#3f8fe8';for(const id in MP.others){const g=MP.others[id];if(g.f===P.floor&&g.M)m.fillRect(ox+g.x/CELL*s-1.5*u,oy+g.z/CELL*s-1.5*u,3*u,3*u);}
+  /* player arrow: exact world position and facing, redrawn every frame */
+  const tn=performance.now(),dtm=Math.min(.1,Math.max(0,(tn-MS.t)/1000));MS.t=tn;
+  if(MS.L!==L||Math.hypot(P.x-MS.x,P.z-MS.z)>CELL*2){MS.x=P.x;MS.z=P.z;MS.yaw=P.yaw;MS.L=L;}
+  else{const k=1-Math.exp(-dtm*40);MS.x+=(P.x-MS.x)*k;MS.z+=(P.z-MS.z)*k;let dy=P.yaw-MS.yaw;dy-=Math.PI*2*Math.round(dy/(Math.PI*2));MS.yaw+=dy*k;}
+  const px=ox+MS.x/CELL*s,py=oy+MS.z/CELL*s,afx=-Math.sin(MS.yaw),afz=-Math.cos(MS.yaw),aqx=-afz,aqz=afx;
+  m.beginPath();m.moveTo(px+afx*5.5*u,py+afz*5.5*u);m.lineTo(px-afx*3*u+aqx*3.4*u,py-afz*3*u+aqz*3.4*u);m.lineTo(px-afx*1.2*u,py-afz*1.2*u);m.lineTo(px-afx*3*u-aqx*3.4*u,py-afz*3*u-aqz*3.4*u);m.closePath();
+  m.fillStyle='#fff';m.fill();m.lineWidth=u;m.strokeStyle='#ff9426';m.stroke();
 }
 
 /* ---------------- combat ---------------- */
@@ -12007,7 +12036,7 @@ function frame(now){
   if(state==='play'){
     updPlayer(dt);if(state==='play'){updEnemies(dt);updProjs(dt);updWorld(dt);}
     placeCam();updParticles(dt);if(OPEN)updOpen(dt);
-    mapT-=dt;if(TP){TP.t-=dt;if(TP.t<=0)setMapBig(false);}if(mapBig&&(state!=='play'||PVP.on))setMapBig(false);if(mapT<=0){mapT=.3;if(!OPEN)drawMap();}
+    mapT-=dt;if(TP){TP.t-=dt;if(TP.t<=0)setMapBig(false);}if(mapBig&&(state!=='play'||PVP.on))setMapBig(false);if(mapT<=0){mapT=.2;if(L&&L.grid){const sg=mapSig();if(sg!==mapSigV){mapSigV=sg;mapDirty=true;}}}if(!OPEN)drawMap();
     hudAcc+=dt;if(hudAcc>=.05){hudAcc=0;hudUpdate();}
   }else if(state==='title'){
     P.yaw+=dt*.12;placeCam();updWorld(dt);updParticles(dt);
