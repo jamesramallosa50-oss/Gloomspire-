@@ -12,7 +12,7 @@
 
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAC1ElEQVR4nO3cMW4TQRiAUYwQULqgAomKGyRV6Egqw1mpwFXCSThCCh+BPkZ4PZ/leJf3SivjTPFppNWs/9Xrt29ewKiXz70B5k1AJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiCSV8+9gRF3m9uDf3O/fZjdqjlyApEIiERAJAIiERCJgEgERCIgEgGRCIhEQCSrZcxIvL65evLJer0+yTfvdruTfM/+ftyFgYBoBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERDJLKdzTDHlTcL9twR/fvl9cNXXX58G/tep3my8NE4gEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIZLF3YWP277n4NycQiYBIBEQiIBIBkSz2KezyZyQugxOIREAkAiIREImASAREIiASAZEIiERAJAIiWexd2Jgp0zk+f393hp3MhROIREAkAiIREImASBb7FDY2I3GK/VVmJMIgAZEIiERAJAIiWexT2BjTOY7lBCIREImASAREIiASAZEIiERAJAIiERCJgEgWexdmRuJ5OIFIBEQiIBIBkQiIZLFPYWNM5ziWE4hEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiJZ7F3Y2IzEKdM59l8tNCMRBgmIREAkAiIREImASAREIiASAZEIiERAJIu9C5tiyq/ApviffynmBCIREImASAREIiCSGTyFXd9cDayaNpPw8ekH3zaHF/3YHr+dv+znbnN7cNX99mHgf52TE4hEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiGQGbyTuv8s3x5mEYzMbL58TiERAJAIiERCJgEhW7z9+eO49MGNOIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBI/gC9ylNZWsVMhgAAAABJRU5ErkJggg==">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<style>html{color-scheme:dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>html{color-scheme:dark}*{-webkit-tap-highlight-color:transparent}button,[role=button],canvas{outline:none;-webkit-touch-callout:none}#game,#touch,#touch *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <script>
 /* old/low-end phones: iterable TouchList, pointer events from touch, weak-device default graphics */
 (function(){try{
@@ -766,7 +766,7 @@ button.go{background:var(--blood);border-color:var(--bone)}
   --px-ember-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23b8181d' d='M8 0h1v9H0V8h8z'/%3E%3Cpath fill='%23ff9d2e' d='M7 2h1v6H2V7h5z'/%3E%3Crect fill='%23fff0b8' x='5' y='5' width='2' height='2'/%3E%3C/svg%3E");
 }
 body { background: var(--void); color: var(--bone); -webkit-font-smoothing: none; text-rendering: optimizeSpeed; }
-#view { filter: contrast(1.08) saturate(1.14) brightness(1.02); will-change: transform; }
+#view { will-change: transform; }
 #game.gfx #view { filter: contrast(1.12) saturate(1.22) brightness(1.04); }
 #vgn { display: block !important; background: radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(5, 6, 8, 0.35) 78%, rgba(2, 3, 4, 0.78) 100%); }
 #dungeon-ambience { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
@@ -847,8 +847,8 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
     var ctx = ambCanvas.getContext("2d");
     var w = 0, h = 0;
     function resizeAmb() {
-      w = ambCanvas.width = Math.max(1, Math.floor(window.innerWidth * 0.5));
-      h = ambCanvas.height = Math.max(1, Math.floor(window.innerHeight * 0.5));
+      w = ambCanvas.width = Math.max(1, Math.floor(window.innerWidth * 0.35));
+      h = ambCanvas.height = Math.max(1, Math.floor(window.innerHeight * 0.35));
     }
     window.addEventListener("resize", resizeAmb);
     resizeAmb();
@@ -1008,6 +1008,21 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
     /* STEP 3 & KILL BONUS: 3D Directional Hit Particles & Balloon-Pop Explosion */
     var sparkGeo = null;
     var puffGeo = null;
+    var gsVmDir = null, gsSweepT = 0, gsCamDirTmp = null;
+    /* safety net: remove any hit-FX mesh that nothing is animating any more (older builds leaked these) */
+    function gsSweepFx(sc) {
+      if (!sc || !sc.children) return;
+      var live = new Set(), i;
+      for (i = 0; i < particles3D.length; i++) live.add(particles3D[i].mesh);
+      for (i = 0; i < balloonPops.length; i++) live.add(balloonPops[i].mesh);
+      for (i = sc.children.length - 1; i >= 0; i--) {
+        var c = sc.children[i];
+        if (c.userData && c.userData._isPunchFX && !live.has(c)) {
+          sc.remove(c);
+          if (c.material && c.material.dispose) c.material.dispose();
+        }
+      }
+    }
     function spawnHitParticles3D(worldPos, hitDir, isCrit, isKill) {
       if (!activeScene || !window.THREE) return;
       if (!sparkGeo) sparkGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
@@ -1027,7 +1042,7 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
         );
         var spd = isPuff ? (2.0 + Math.random() * 3.8) : (5.0 + Math.random() * 6.0);
         var spread = isPuff ? 1.4 : 0.7;
-        activeScene.add(mesh);
+        (window.__gsMainScene || activeScene).add(mesh);
         particles3D.push({
           mesh: mesh,
           vx: hitDir.x * spd + (Math.random() - 0.5) * spread * spd,
@@ -1049,8 +1064,9 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
       var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, fog: false });
       var proxy = new THREE.Mesh(geo, mat);
       proxy.userData._isPunchFX = true;
+      proxy.visible = false; /* the solid white swelling box read as a glitch; the burst of particles at the end stays */
       proxy.position.copy(worldPos);
-      activeScene.add(proxy);
+      (window.__gsMainScene || activeScene).add(proxy);
       balloonPops.push({
         mesh: proxy,
         pos: worldPos.clone(),
@@ -1061,8 +1077,28 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
     }
 
     /* Find best matching tracked enemy near screen coordinates (sx, sy) */
+    function gsBuildTracked() {
+      trackedEnemies.length = 0;
+      var list = null;
+      try { list = (typeof enemies !== 'undefined') ? enemies : null; } catch (_) {}
+      if (!list || !activeCamera) return;
+      var cp = new THREE.Vector3();
+      activeCamera.getWorldPosition(cp);
+      for (var i = 0; i < list.length && trackedEnemies.length < 28; i++) {
+        var e = list[i], g = e && e.g;
+        if (!g || !g.parent) continue;
+        if (g.position.distanceToSquared(cp) > 50 * 50) continue;
+        var info = gsRootInfo(g);
+        if (!info) continue;
+        var c = new THREE.Vector3();
+        info.box.getCenter(c);
+        trackedEnemies.push({ root: g, center: c, size: info.size, time: performance.now() });
+      }
+    }
     function findBestTrackedEnemy(sx, sy) {
-      if (!activeCamera || !window.THREE || trackedEnemies.length === 0) return null;
+      if (!activeCamera || !window.THREE) return null;
+      gsBuildTracked();
+      if (trackedEnemies.length === 0) return null;
       var ndcX = (sx / Math.max(1, window.innerWidth)) * 2 - 1;
       var ndcY = -(sy / Math.max(1, window.innerHeight)) * 2 + 1;
       var camPos = new THREE.Vector3();
@@ -1253,6 +1289,22 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
 
       renderer.render = function(scene, camera) {
         var now = performance.now();
+        /* FIX (stuck effects): this wrapper used to treat EVERY render call as "the world" - the weapon/viewmodel pass, the scope lens, icon renders.
+           Hit particles were then spawned into the weapon scene and removed from the wrong scene, so they stayed glued to the screen forever.
+           Now only the game scene + game camera drawn to the screen drives particles; the weapon pass only gets the recoil kick. */
+        var gsMain = scene === window.__gsMainScene && camera === window.__gsMainCam && !renderer.getRenderTarget();
+        if (!gsMain) {
+          if (scene && scene === window.__gsVmScene && recoilBack > 0.001 && camera && camera.isCamera) {
+            if (!gsVmDir) gsVmDir = new THREE.Vector3();
+            camera.getWorldDirection(gsVmDir);
+            var vmx = gsVmDir.x * recoilBack, vmz = gsVmDir.z * recoilBack;
+            camera.position.x -= vmx; camera.position.z -= vmz;
+            var vmOut = origRender.apply(this, arguments);
+            camera.position.x += vmx; camera.position.z += vmz;
+            return vmOut;
+          }
+          return origRender.apply(this, arguments);
+        }
         var dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) * 0.001));
         lastFrameTime = now;
 
@@ -1261,17 +1313,19 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
           activeCamera = camera;
 
           /* Step 5: Hitstop Freeze Frame */
-          if (now < freezeUntil) return;
+          if (now < freezeUntil) return origRender.apply(this, arguments);
 
           frameRoots.clear();
           gsBudget = 14;
+          gsSweepT -= dt;
+          if (gsSweepT <= 0) { gsSweepT = 0.5; gsSweepFx(scene); gsSweepFx(window.__gsVmScene); }
 
           /* Update 3D Directional Hit Particles */
           for (var p = particles3D.length - 1; p >= 0; p--) {
             var pt = particles3D[p];
             pt.life += dt;
             if (pt.life >= pt.maxLife) {
-              scene.remove(pt.mesh);
+              if (pt.mesh.parent) pt.mesh.parent.remove(pt.mesh);
               if (pt.mesh.material) pt.mesh.material.dispose();
               particles3D.splice(p, 1);
               continue;
@@ -1294,7 +1348,7 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
             var bp = balloonPops[b];
             bp.t += dt;
             if (bp.t >= bp.dur) {
-              scene.remove(bp.mesh);
+              if (bp.mesh.parent) bp.mesh.parent.remove(bp.mesh);
               if (bp.mesh.geometry) bp.mesh.geometry.dispose();
               if (bp.mesh.material) bp.mesh.material.dispose();
               spawnHitParticles3D(bp.pos, bp.hitDir, true, true);
@@ -1335,7 +1389,7 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
           recoilVel *= Math.pow(0.002, dt);
           if (Math.abs(recoilBack) < 0.001 && Math.abs(recoilVel) < 0.01) { recoilBack = 0; recoilVel = 0; }
 
-          var camDir = new THREE.Vector3();
+          var camDir = gsCamDirTmp || (gsCamDirTmp = new THREE.Vector3());
           var didRecoil = false;
           if (recoilBack > 0.001) {
             camera.getWorldDirection(camDir);
@@ -1370,23 +1424,8 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
           activeScene = scene;
           activeCamera = camera;
           wrapRendererInstance(renderer);
-        }
-        if (scene && camera && !this.userData._isPunchFX) {
-          var info = null, gsNow = performance.now(), gsc = gsRootCache.get(this);
-          if (gsc && gsNow < gsc.until) {
-            if (gsc.root && !frameRoots.has(gsc.root)) info = gsRootInfo(gsc.root);
-          } else if (gsBudget > 0) {
-            gsBudget--;
-            info = getEnemyRoot(this);
-            gsRootCache.set(this, { root: info ? info.root : null, until: gsNow + (info ? 1200 : 2500) + Math.random() * 1500 });
-          }
-          if (info && !frameRoots.has(info.root)) {
-            frameRoots.add(info.root);
-            var center = new THREE.Vector3();
-            info.box.getCenter(center);
-            trackedEnemies.unshift({ root: info.root, center: center, size: info.size, time: performance.now() });
-            if (trackedEnemies.length > 28) trackedEnemies.length = 28;
-          }
+          /* PERF: renderer is wrapped now, so remove this per-mesh hook (it used to run for every mesh every frame) */
+          THREE.Object3D.prototype.onBeforeRender = origBefore;
         }
         if (origBefore) return origBefore.apply(this, arguments);
       };
@@ -1403,7 +1442,7 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
       if (shakeMag > 0.15 || recoilBack > 0.005) {
         var sx = (Math.random() - 0.5) * 2 * shakeMag;
         var sy = (Math.random() - 0.5) * 2 * shakeMag + recoilBack * 14;
-        var sc = 1.012 - Math.min(0.025, recoilBack * 0.08);
+        var sc = 1.02 + 2 * (Math.max(Math.abs(sx), Math.abs(sy)) + 1) / Math.max(1, Math.min(window.innerWidth, window.innerHeight));
         viewEl.style.transform = "translate3d(" + sx.toFixed(1) + "px," + sy.toFixed(1) + "px,0) scale(" + sc.toFixed(3) + ")";
         shakeMag *= 0.78;
       } else if (viewEl.style.transform) {
@@ -4070,7 +4109,7 @@ const PK={
 const PMAX=1400,pPos=new Float32Array(PMAX*3).fill(-999),pCol=new Float32Array(PMAX*3),pVel=new Float32Array(PMAX*3),pLife=new Float32Array(PMAX),pGrav=new Float32Array(PMAX),pStick=new Uint8Array(PMAX);
 let pCur=0;
 const pGeo=new T.BufferGeometry();pGeo.setAttribute('position',new T.BufferAttribute(pPos,3));pGeo.setAttribute('color',new T.BufferAttribute(pCol,3));
-const pmaxU={value:12},pMat=new T.PointsMaterial({size:.13,vertexColors:true,sizeAttenuation:true});pMat.onBeforeCompile=sh=>{sh.uniforms.pmax=pmaxU;sh.vertexShader='uniform float pmax;\n'+sh.vertexShader.replace('#include <logdepthbuf_vertex>','gl_PointSize=min(gl_PointSize,pmax);\n#include <logdepthbuf_vertex>');};const pPts=new T.Points(pGeo,pMat);pPts.frustumCulled=false;scene.add(pPts);
+const pmaxU={value:12},pMat=new T.PointsMaterial({size:.13,vertexColors:true,sizeAttenuation:true});pMat.onBeforeCompile=sh=>{sh.uniforms.pmax=pmaxU;sh.vertexShader='uniform float pmax;\n'+sh.vertexShader.replace('#include <logdepthbuf_vertex>','gl_PointSize=min(gl_PointSize,pmax)*smoothstep(.3,1.3,-mvPosition.z);if(-mvPosition.z<.3)gl_Position=vec4(2.,2.,2.,1.);\n#include <logdepthbuf_vertex>');sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat pd=length(gl_PointCoord-.5);if(pd>.5)discard;diffuseColor.rgb*=1.3-pd*.9;');};pMat.fog=false;const pPts=new T.Points(pGeo,pMat);pPts.frustumCulled=false;scene.add(pPts);
 function spark(x,y,z,vx,vy,vz,life,c,grav,stick){
   if(EVR.on)EVR.q(3,[x,y,z,vx,vy,vz,life,c,grav]);
   const i=pCur;pCur=(pCur+1)%PMAX;const k=i*3;
@@ -5583,7 +5622,7 @@ function hurtP(d,src,nr){
 }
 function shootProj(o){
   if(o.from==='p'&&MP.on){const now=performance.now();if(now-MP.lastShot>(mpRttMax()>180?180:110)){MP.lastShot=now;mpSend({t:'f',f:P.floor,k:o.kind,x:+o.x.toFixed(1),y:+o.y.toFixed(1),z:+o.z.toFixed(1),dx:+o.dx.toFixed(2),dy:+o.dy.toFixed(2),dz:+o.dz.toFixed(2),s:Math.round(o.spd),l:+(+o.life||1).toFixed(1)});}}
-  if(!PK[o.kind])o.kind='fire';const K=PK[o.kind],m=new T.Mesh(K.geo,o.col!=null?new T.MeshBasicMaterial({color:o.col}):K.mat);m.position.set(o.x,o.y,o.z);if(o.col2!=null){const h=new T.Mesh(SPHG,FXADD(o.col2,.4));h.scale.setScalar(.75);m.add(h);const h2=new T.Mesh(geo(.3,.3,.3),new T.MeshBasicMaterial({color:0xffffff}));m.add(h2);}m.lookAt(o.x+o.dx,o.y+o.dy,o.z+o.dz);lvl.add(m);
+  if(!PK[o.kind])o.kind='fire';const K=PK[o.kind],m=new T.Mesh(K.geo,o.col!=null?new T.MeshBasicMaterial({color:o.col}):K.mat);m.position.set(o.x,o.y,o.z);if(o.col2!=null){const h=new T.Mesh(SPHG,FXADD(o.col2,.4));h.scale.setScalar(.75);m.add(h);const h2=new T.Mesh(geo(.3,.3,.3),new T.MeshBasicMaterial({color:0xffffff}));m.add(h2);}m.lookAt(o.x+o.dx,o.y+o.dy,o.z+o.dz);if(o.from==='p')m.visible=false;lvl.add(m);
   if(K.halo){if(!K.hm)K.hm=FXADD(K.halo,.4);const h=new T.Mesh(SPHG,K.hm);h.scale.setScalar(K.r*2.7);m.add(h);}
   o.m=m;o.sp=SPC;o.age=0;o.r=K.r;o.trail=o.tr||K.trail;o.hit=null;projs.push(o);
 }
@@ -5595,6 +5634,7 @@ function explode(x,y,z,rad,dmg){
   for(const e of enemies.slice()){if(e.dead)continue;const d=Math.hypot(e.x-x,e.z-z,(e.y+e.h*.5)-y);if(d<rad+e.r)hurtEnemy(e,dmg*(1-.5*Math.min(1,d/rad)));}
   for(const u of urns)if(!u.taken&&Math.hypot(u.x-x,u.z-z)<rad)breakUrn(u);
 }
+const THINSHOT={bullet:1,pellet:1,slug:1,bolt:1,arrow:1,lance:1};
 function updProjs(dt){
   for(let i=projs.length-1;i>=0;i--){
     const p=projs[i];
@@ -5630,6 +5670,7 @@ function updProjs(dt){
         }
       }else if(p.from==='e'){const ex=P.x-p.x,ez=P.z-p.z,rr=PR+p.r;if(ex*ex+ez*ez<rr*rr&&p.y>.1+PY()&&p.y<(P.slide>0?1.05:1.95)+PY()){const h0=P.hp+(P.ward||0);hurtP(p.dmg,{x:p.x-p.dx*4,z:p.z-p.dz*4,name:p.who});if(p.chill&&P.hp+(P.ward||0)<h0){P.slowT=Math.max(P.slowT||0,p.chill);msg('Chilled! You are slowed.','bad','chill');burst(P.x,1,P.z,12,[.6,.9,1],2,.5,0);}dead=true;}}
     }
+    if(p.from==='p'&&p.m){const hx=p.x-P.x,hz=p.z-P.z;p.m.visible=hx*hx+hz*hz>1.7;}
     if(p.trail&&Math.random()<.7)spark(p.x,p.y,p.z,rnd(-.4,.4),rnd(-.2,.6),rnd(-.4,.4),.3,p.trail,-.1);
     if(dead){
       if(p.blast){PVS=!!p.sp;GUNH=p.from==='p'&&!!GK[p.kind];try{explode(p.x,p.y,p.z,p.blast,p.dmg);}finally{PVS=false;GUNH=false;}}if(p.fuse&&p.from==='p')fuse(p.fuse,{x:p.x,z:p.z},1);
@@ -13323,7 +13364,7 @@ if(isTouch){$('howto').innerHTML='<b>Left thumb</b><span>move; push all the way 
 let RW=320,RH=240,qScale=1,perfEma=16,perfHold=0,qMax=1,qGood=0,qSince=9999,spdOp=-1;
 /* Auto: start sharp, drop a step whenever the game stays slow, climb back only if it stays smooth for a long while */
 function perfTick(raw){if(state!=='play'||raw>250||raw<1||qMode()!=='auto')return;qSince++;perfEma+=(raw-perfEma)*.05;
-  if(perfEma>25){qGood=0;if(++perfHold>100&&qScale>.5){if(qSince<900)qMax=Math.max(.5,qScale-.13);qScale=Math.max(.5,qScale-.13);perfHold=0;perfEma=16;qSince=0;resize();}}
+  if(perfEma>25){qGood=0;if(++perfHold>50&&qScale>.5){if(qSince<900)qMax=Math.max(.5,qScale-.13);qScale=Math.max(.5,qScale-.13);perfHold=0;perfEma=16;qSince=0;resize();}}
   else{perfHold=0;if(perfEma<14.5&&qScale<qMax-.01){if(++qGood>900){qScale=Math.min(qMax,qScale+.13);qGood=0;qSince=0;perfEma=16;resize();}}else qGood=0;}}
 let rot=false;
 const tp=t=>rot?{x:t.clientY,y:innerWidth-t.clientX}:{x:t.clientX,y:t.clientY};
@@ -13384,6 +13425,7 @@ function frame(now){
     renderer.render(endingScene,endingCam);
   }
   else{
+    window.__gsMainScene=scene;window.__gsMainCam=cam;window.__gsVmScene=vmScene;
     renderer.render(scene,cam);
     if(state==='play'||state==='dying'||(state==='pick'&&pickMode==='levelSpell')){
       renderer.clearDepth();
