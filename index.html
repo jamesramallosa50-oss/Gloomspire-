@@ -22,6 +22,347 @@ if(!window.PointerEvent){document.addEventListener('touchstart',function(e){var 
 </script>
 </head>
 <body>
+<style>
+/* Portrait warning: ornate carved dungeon tablet asking for landscape */
+#rotate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  text-align: center;
+  color: var(--bone);
+  font-family: var(--f-body);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 157, 46, 0.22) 0%, rgba(212, 28, 36, 0.08) 32%, transparent 62%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at 50% 50%, #141917 0%, #050608 100%);
+}
+
+/* Rising ember motes in the background */
+#rotate-overlay::before,
+#rotate-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 18% 78%, rgba(255, 157, 46, 0.75) 50%, transparent 100%),
+    radial-gradient(2px 2px at 34% 62%, rgba(245, 196, 69, 0.6) 50%, transparent 100%),
+    radial-gradient(3px 3px at 68% 82%, rgba(255, 148, 38, 0.7) 50%, transparent 100%),
+    radial-gradient(2px 2px at 82% 58%, rgba(212, 28, 36, 0.65) 50%, transparent 100%),
+    radial-gradient(2px 2px at 52% 90%, rgba(255, 210, 140, 0.55) 50%, transparent 100%);
+  animation: roEmbers 6s linear infinite;
+}
+#rotate-overlay::after {
+  background-size: 130% 130%;
+  animation-duration: 9s;
+  animation-delay: -3s;
+  opacity: 0.6;
+}
+@keyframes roEmbers {
+  0% { transform: translateY(16px); opacity: 0.25; }
+  50% { opacity: 0.85; }
+  100% { transform: translateY(-48px); opacity: 0.15; }
+}
+
+/* Carved stone plaque with pixel corner brackets */
+#rotate-overlay .ro-plaque {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+  width: 100%;
+  padding: 24px 22px 20px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 2px solid #4a564e;
+  background-image:
+    var(--px-ember-tl), var(--px-ember-tr), var(--px-ember-bl), var(--px-ember-br),
+    radial-gradient(circle at 50% 0%, rgba(255, 157, 46, 0.16) 0%, transparent 65%),
+    linear-gradient(170deg, #1f2622 0%, #111513 55%, #0a0d0c 100%);
+  background-repeat: no-repeat;
+  background-position: top 4px left 4px, top 4px right 4px, bottom 4px left 4px, bottom 4px right 4px, 0 0, 0 0;
+  background-size: 15px 15px, 15px 15px, 15px 15px, 15px 15px, 100% 100%, 100% 100%;
+  box-shadow:
+    0 0 0 3px #050608,
+    0 0 0 5px #8a6b2f,
+    0 22px 50px rgba(0, 0, 0, 0.92),
+    0 0 36px rgba(255, 157, 46, 0.18),
+    inset 0 1px 0 rgba(255, 235, 190, 0.15),
+    inset 0 0 24px rgba(0, 0, 0, 0.75);
+}
+
+/* Top dungeon crest tag */
+#rotate-overlay .ro-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 14px;
+  font-family: var(--f-display);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  background: rgba(5, 6, 8, 0.75);
+  border: 1px solid rgba(245, 196, 69, 0.35);
+  border-radius: 3px;
+  text-shadow: 0 1px 0 #000;
+}
+#rotate-overlay .ro-kicker::before,
+#rotate-overlay .ro-kicker::after {
+  content: "❖";
+  color: var(--ember);
+  font-size: 9px;
+}
+
+/* Interactive rotation stage: ghost landscape target + tilting phone */
+#rotate-overlay .ro-stage {
+  position: relative;
+  width: 136px;
+  height: 104px;
+  margin: 2px 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ghost landscape target outline */
+#rotate-overlay .ro-target {
+  position: absolute;
+  width: 92px;
+  height: 54px;
+  border: 2px dashed rgba(245, 196, 69, 0.32);
+  border-radius: 5px;
+  background: rgba(255, 157, 46, 0.04);
+  box-shadow: inset 0 0 12px rgba(255, 157, 46, 0.08);
+  animation: roTargetPulse 2.8s ease-in-out infinite;
+}
+@keyframes roTargetPulse {
+  0%, 40% { border-color: rgba(245, 196, 69, 0.22); box-shadow: inset 0 0 8px rgba(255, 157, 46, 0.04); }
+  65%, 90% { border-color: rgba(245, 196, 69, 0.75); box-shadow: 0 0 18px rgba(255, 157, 46, 0.28), inset 0 0 12px rgba(255, 157, 46, 0.18); }
+  100% { border-color: rgba(245, 196, 69, 0.22); }
+}
+
+/* Curved rotation arc SVG */
+#rotate-overlay .ro-arc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.85));
+  animation: roArcFade 2.8s ease-in-out infinite;
+}
+@keyframes roArcFade {
+  0%, 15% { opacity: 0.35; transform: scale(0.96); }
+  45%, 80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.35; transform: scale(0.96); }
+}
+
+/* Pixel device with mini tower screen */
+#rotate-overlay .ro-phone {
+  position: relative;
+  width: 52px;
+  height: 88px;
+  box-sizing: border-box;
+  background: #070908;
+  border: 3px solid var(--bone);
+  border-radius: 5px;
+  box-shadow:
+    0 0 0 2px #050608,
+    4px 6px 0 rgba(5, 6, 8, 0.9),
+    0 0 22px rgba(255, 157, 46, 0.38);
+  animation: roTilt 2.8s cubic-bezier(0.34, 1.4, 0.64, 1) infinite;
+}
+/* Earpiece notch */
+#rotate-overlay .ro-phone::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 14px;
+  height: 3px;
+  margin-left: -7px;
+  background: var(--stone-3);
+  border-radius: 1px;
+}
+/* Mini Gloomspire screen inside the phone */
+#rotate-overlay .ro-phone::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 11px;
+  bottom: 7px;
+  border: 1px solid #2b332e;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 157, 46, 0.55) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 157, 46, 0.32) 0 3px, transparent 3px 6px),
+    linear-gradient(180deg, #1b1310 0%, #090b0a 100%);
+}
+@keyframes roTilt {
+  0%, 18% {
+    transform: rotate(0deg) scale(1);
+    border-color: var(--bone);
+  }
+  58%, 86% {
+    transform: rotate(-90deg) scale(1.04);
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 2px #050608,
+      0 0 26px rgba(245, 196, 69, 0.55),
+      0 0 10px rgba(255, 157, 46, 0.45);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+    border-color: var(--bone);
+  }
+}
+
+/* Heading + gothic divider */
+#rotate-overlay h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  color: var(--bone);
+  text-shadow: 0 3px 0 #7a1115, 0 5px 0 #050608, 0 0 18px rgba(255, 157, 46, 0.4);
+}
+#rotate-overlay h2::after {
+  content: "─── ◆ ───";
+  display: block;
+  margin: 6px 0 10px;
+  font-family: var(--f-body);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  color: #8a6b2f;
+  text-shadow: none;
+}
+
+/* Body copy */
+#rotate-overlay p {
+  margin: 0 0 18px;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--bone-dim);
+  max-width: 28ch;
+}
+#rotate-overlay p b {
+  color: var(--ember);
+  font-weight: 400;
+  text-shadow: 0 0 8px rgba(255, 157, 46, 0.3);
+}
+
+/* Buttons */
+#rotate-overlay button {
+  font-family: var(--f-display);
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rotate-overlay .ro-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 12px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(180deg, #cf232a 0%, #821115 100%);
+  border: 2px solid #f0c987;
+  border-radius: 5px;
+  box-shadow:
+    0 4px 0 #2b0507,
+    0 8px 22px rgba(212, 28, 36, 0.5),
+    inset 0 1px 0 rgba(255, 220, 180, 0.35);
+  text-shadow: 0 1px 2px #000;
+}
+#rotate-overlay .ro-go:hover {
+  background: linear-gradient(180deg, #e02b32 0%, #99151a 100%);
+  border-color: #ffe2a8;
+}
+#rotate-overlay .ro-go:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #2b0507, 0 4px 10px rgba(212, 28, 36, 0.4);
+}
+#rotate-overlay .ro-go svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  flex: none;
+}
+
+#rotate-overlay .ro-skip {
+  margin-top: 12px;
+  padding: 8px 14px;
+  width: 100%;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--bone-dim);
+  background: rgba(18, 21, 20, 0.7);
+  border: 1px solid var(--stone-3);
+  border-radius: 4px;
+  box-shadow: none;
+  text-decoration: none;
+}
+#rotate-overlay .ro-skip:hover {
+  color: var(--bone);
+  border-color: #8a6b2f;
+  background: rgba(31, 37, 34, 0.85);
+}
+#rotate-overlay .ro-skip:active {
+  transform: translateY(1px);
+}
+
+@media (orientation: portrait) and (pointer: coarse) and (max-width: 920px) {
+  #rotate-overlay { display: flex; }
+  html.ro-off #rotate-overlay { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #rotate-overlay::before,
+  #rotate-overlay::after,
+  #rotate-overlay .ro-target,
+  #rotate-overlay .ro-arc { animation: none; }
+  #rotate-overlay .ro-phone { animation: none; transform: rotate(-90deg); border-color: var(--gold); }
+}
+</style>
+<div id="rotate-overlay" role="alertdialog" aria-labelledby="ro-title">
+  <div class="ro-plaque">
+    <span class="ro-kicker" aria-hidden="true">GLOOMSPIRE</span>
+    <div class="ro-stage" aria-hidden="true">
+      <div class="ro-target"></div>
+      <svg class="ro-arc" viewBox="0 0 136 104" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M68 8 C 36 8, 16 28, 16 54" stroke="#ff9d2e" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="square"/>
+        <path d="M11 49 L16 57 L21 49" fill="#f5c445"/>
+        <path d="M68 96 C 100 96, 120 76, 120 50" stroke="#ff9d2e" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="square" opacity="0.65"/>
+        <path d="M115 55 L120 47 L125 55" fill="#f5c445" opacity="0.65"/>
+      </svg>
+      <div class="ro-phone"></div>
+    </div>
+    <h2 id="ro-title">TURN YOUR DEVICE</h2>
+    <p>The spire's halls demand a wide view. Tilt your device to <b>landscape</b> to begin the climb.</p>
+    <button class="ro-go" id="force-landscape-btn" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges">
+        <path d="M2 2h5v2H4v3H2V2zm7 0h5v5h-2V4H9V2zM2 9h2v3h3v2H2V9zm10 0h2v5H9v-2h3V9z"/>
+      </svg>
+      <span>Rotate &amp; Fullscreen</span>
+    </button>
+    <button class="ro-skip" id="ro-skip" type="button">Continue in portrait anyway</button>
+  </div>
+</div>
 
 <style>
 /* Layout: one full-bleed 3D viewport; a Doom-style status slab along the bottom, map top-right, screens as centered stone plaques. Single dark look by choice. */
@@ -281,7 +622,7 @@ button.go{background:var(--blood);border-color:var(--bone)}
 #scopefx.ads{opacity:1;transform:scale(1)}
 #scopefx.snp{--r:38vmin}
 /* out-of-scope view: dim + blurred, like looking past the tube (scene still faintly visible) */
-#scopefx .sout{position:absolute;inset:0;background:rgba(6,8,7,.78);-webkit-backdrop-filter:blur(3px) brightness(.7);backdrop-filter:blur(3px) brightness(.7);
+#scopefx .sout{position:absolute;inset:0;background:rgba(6,8,7,.84);
  -webkit-mask:radial-gradient(circle at 50% 50%,transparent calc(var(--r) + 2vmin),#000 calc(var(--r) + 2.2vmin));mask:radial-gradient(circle at 50% 50%,transparent calc(var(--r) + 2vmin),#000 calc(var(--r) + 2.2vmin))}
 #scopefx .sout::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent calc(var(--r) + 4vmin),rgba(0,0,0,.85) 90vmin)}
 /* glass: inner shadow near the tube, faint cold tint, fringe */
@@ -428,8 +769,8 @@ body { background: var(--void); color: var(--bone); -webkit-font-smoothing: none
 #view { filter: contrast(1.08) saturate(1.14) brightness(1.02); will-change: transform; }
 #game.gfx #view { filter: contrast(1.12) saturate(1.22) brightness(1.04); }
 #vgn { display: block !important; background: radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(5, 6, 8, 0.35) 78%, rgba(2, 3, 4, 0.78) 100%); }
-#dungeon-ambience { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; mix-blend-mode: screen; }
-#vit { gap: 8px; padding: 5px 8px 5px 5px; border: 2px solid var(--stone-3); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#dungeon-ambience { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+#vit { gap: 8px; padding: 5px 8px 5px 5px; border: 2px solid var(--stone-3); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.1); background: rgba(6,8,7,.38); }
 #vport { border: 2px solid #3a3222; border-radius: 4px; box-shadow: 0 0 0 2px #9e7a36, 0 4px 12px rgba(0,0,0,0.85), inset 0 0 10px rgba(0,0,0,0.9); overflow: hidden; }
 .vb, .bar { background: #050706; border: 2px solid #363f3a; border-radius: 3px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.95), 0 1px 0 rgba(255,255,255,0.06); overflow: hidden; }
 .vb i, .bar i { transition: width 0.14s cubic-bezier(0.22, 1, 0.36, 1); z-index: 2; }
@@ -479,8 +820,8 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
 }
 #invcols h3 { display: flex; align-items: center; gap: 8px; padding: 6px 10px; color: var(--gold); background: linear-gradient(90deg, rgba(245,196,69,0.14) 0%, transparent 100%); border-left: 3px solid var(--gold); border-bottom: 1px solid rgba(245,196,69,0.3); }
 #invcols h3::before { content: "❖"; color: var(--ember); font-size: 11px; }
-#stick { background: radial-gradient(circle at 50% 50%, rgba(22,27,24,0.55) 0%, rgba(6,8,7,0.78) 100%); border: 2px solid rgba(154,147,124,0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-#touch button { background: radial-gradient(circle at 50% 35%, rgba(46,54,49,0.78) 0%, rgba(16,20,18,0.88) 100%); border: 2px solid rgba(154,147,124,0.48); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+#stick { background: radial-gradient(circle at 50% 50%, rgba(22,27,24,0.55) 0%, rgba(6,8,7,0.78) 100%); border: 2px solid rgba(154,147,124,0.45); }
+#touch button { background: radial-gradient(circle at 50% 35%, rgba(46,54,49,0.78) 0%, rgba(16,20,18,0.88) 100%); border: 2px solid rgba(154,147,124,0.48); }
 #touch #tfire, #touch #tfire2 { background: radial-gradient(circle at 50% 35%, rgba(220,38,44,0.82) 0%, rgba(115,14,18,0.9) 100%); border-color: rgba(255,210,180,0.75); }
 @media (max-height: 480px) { .screen h2::after { display: none; } }
 </style>
@@ -894,6 +1235,15 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
     /* Hook THREE.Object3D.prototype.onBeforeRender to capture live renderer, scene, camera & enemies */
     var frameRoots = new Set();
     var lastFrameTime = performance.now();
+    var gsRootCache = new WeakMap(), gsBudget = 14;
+    function gsRootInfo(root) {
+      var box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) return null;
+      var sz = new THREE.Vector3();
+      box.getSize(sz);
+      if (sz.x > 5.2 || sz.z > 5.2 || sz.y > 6.5 || sz.y < 0.22) return null;
+      return { root: root, box: box, size: sz };
+    }
 
     function wrapRendererInstance(renderer) {
       if (!renderer || renderer._gsWrapped) return;
@@ -914,6 +1264,7 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
           if (now < freezeUntil) return;
 
           frameRoots.clear();
+          gsBudget = 14;
 
           /* Update 3D Directional Hit Particles */
           for (var p = particles3D.length - 1; p >= 0; p--) {
@@ -1021,7 +1372,14 @@ button.go { background: linear-gradient(180deg, #cf232a 0%, #821115 100%); borde
           wrapRendererInstance(renderer);
         }
         if (scene && camera && !this.userData._isPunchFX) {
-          var info = getEnemyRoot(this);
+          var info = null, gsNow = performance.now(), gsc = gsRootCache.get(this);
+          if (gsc && gsNow < gsc.until) {
+            if (gsc.root && !frameRoots.has(gsc.root)) info = gsRootInfo(gsc.root);
+          } else if (gsBudget > 0) {
+            gsBudget--;
+            info = getEnemyRoot(this);
+            gsRootCache.set(this, { root: info ? info.root : null, until: gsNow + (info ? 1200 : 2500) + Math.random() * 1500 });
+          }
           if (info && !frameRoots.has(info.root)) {
             frameRoots.add(info.root);
             var center = new THREE.Vector3();
@@ -4532,9 +4890,10 @@ function gainXp(n){
   if(levelSpellQueue>0&&state==='play'&&!P.kc)openLevelSpellPick();
 }
 const RG={};let vfaceId=null;function hudFace(){if(vfaceId===meta.char)return;vfaceId=meta.char;const c=CHARS.find(c=>c.id===meta.char)||CHARS[0],g=$('vface').getContext('2d');g.clearRect(0,0,12,12);drawFace(g,c);}
+let hudRW=0;
 function hudUpdate(){hudFace();
   $('php').style.width=(P.hp/P.maxHp*100)+'%';$('phpt').textContent=Math.ceil(P.hp)+'/'+P.maxHp;$('pst').style.width=(P.sta/maxSta()*100)+'%';$('pst').style.opacity=P.tired?.45:1;
-  {const cs=$('vcomp').children,R=$('vcomp').clientWidth/2-8;for(let i=0;i<4;i++){const a=P.yaw+i*Math.PI/2;cs[i].style.transform='translate('+(Math.sin(a)*R).toFixed(1)+'px,'+(-Math.cos(a)*R).toFixed(1)+'px)';}}
+  {const vc=$('vcomp'),cs=vc.children;if(!(hudRW>0)){const cw=vc.clientWidth;if(cw>0)hudRW=cw/2-8;}const R=hudRW>0?hudRW:vc.clientWidth/2-8;for(let i=0;i<4;i++){const a=P.yaw+i*Math.PI/2;cs[i].style.transform='translate('+(Math.sin(a)*R).toFixed(1)+'px,'+(-Math.cos(a)*R).toFixed(1)+'px)';}}
   $('mpb').style.width=(P.mana/P.maxMana*100)+'%';$('mpt').textContent=Math.floor(P.mana)+'/'+P.maxMana;
   {const w=curW();if(w){const sg=sigOf(w),cd=P.sigCd[CLS[w.c].slot],tx=(isTouch?'':pad.on?'B · ':'R · ')+sg.n.toUpperCase()+(cd>0?' '+Math.ceil(cd)+'s':'');const el=$('sig');if(el.textContent!==tx){el.textContent=tx;el.classList.toggle('rdy',!(cd>0));}}}
   $('goldn').textContent=P.gold;if(bossE&&bossE.awake&&!bossE.dead){target=bossE;targetT=1;}
@@ -12976,7 +13335,7 @@ function layout(){
   else{st.position=st.left=st.top=st.width=st.height=st.transform='';}
 }
 function resize(){
-  layout();
+  hudRW=0;layout();
   const w=gameEl.clientWidth||innerWidth,h=gameEl.clientHeight||innerHeight,a=w/Math.max(1,h);
   const qf=qFactor();pmaxU.value=12*Math.max(.75,qf);
   if(a>=1){RH=Math.round(240*qf);RW=Math.round(Math.min(560,240*a)*qf);}else{RW=Math.round(220*qf);RH=Math.round(Math.min(480,220/a)*qf);}
@@ -14823,5 +15182,26 @@ fixBar();buildTitleLevel();resize();requestAnimationFrame(frame);
 })();
 </script>
 
+<script>
+/* rotate overlay: try fullscreen + landscape lock; if the browser refuses, fall back to the game's own sideways layout */
+(function(){
+  var root=document.documentElement,mq=window.matchMedia?matchMedia('(orientation:portrait)'):null;
+  function dismiss(){root.classList.add('ro-off');}
+  function reset(){if(mq&&!mq.matches)root.classList.remove('ro-off');}
+  if(mq){if(mq.addEventListener)mq.addEventListener('change',reset);else if(mq.addListener)mq.addListener(reset);}
+  async function lockLandscape(){
+    try{
+      if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+        if(root.requestFullscreen)await root.requestFullscreen();
+        else if(root.webkitRequestFullscreen)await root.webkitRequestFullscreen();
+      }
+    }catch(e){}
+    try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}
+    setTimeout(function(){if(mq&&mq.matches)dismiss();},500);
+  }
+  document.getElementById('force-landscape-btn').addEventListener('click',lockLandscape);
+  document.getElementById('ro-skip').addEventListener('click',dismiss);
+})();
+</script>
 </body>
 </html>
