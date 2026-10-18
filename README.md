@@ -120,3 +120,15 @@ Everyone in a multiplayer room needs this same version, because floor layouts ch
 - Lag: every merged decoration mesh (crates, fences, the dais, wall pieces, cobwebs, floor decals) is split into 6 m chunks, so the line-of-sight culler skips the ones behind walls. Before, they were drawn every frame wherever you stood. Candle flames are hidden by distance a few times a second instead of being sorted with the torches every frame. On Low quality there are fewer wall pieces and no floor decals. Merged meshes are freed when you change floor.
 - FOV: the slider is gentler on wide phone screens, and the view never opens past 100° vertical (112° on narrower screens). At max the picture used to stretch past 150° and break up.
 - Secret passages: about half the floors hide a vault behind a wall slab. Nearby is either a bookshelf with one red book pulled out, or a skull plaque with glowing eyes and a loose jaw. Walk up to it and face it, and the lever pulls, the slab grinds up into the ceiling and the vault opens: a bonus chest, health and mana draughts, ore, candles and an old skeleton on a pile of coins. The slab and vault stay off the map until found. In co-op it opens for everyone on the floor.
+
+## Build 2.8
+- Brighter: torch lights are about 55% stronger and reach 27 m instead of 21 with a softer falloff. The ambient light is lifted and warmed, and the fog starts further away. Phones on Auto use 5 torch lights instead of 4 (Low uses 4).
+- Stutter fix: compiled shaders are kept instead of being deleted and rebuilt each time the last effect using them ended. Those rebuilds caused the hitches when spells and hits fired.
+- Fewer draw calls: each torch's iron bracket and handle are merged into chunked level meshes (4 fewer objects per torch). Only the flames and glow stay separate.
+
+## Build 2.9 — low-end pass
+Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on floor 8, with tracing and profiling.
+- The biggest cost was not the 3D scene. It was the browser repainting the HUD: about 20 times a second the game re-wrote the same numbers, class names and hidden flags (HP, mana, gold, keys, level, the scope overlay, the boss bar), and each write made the browser re-lay-out and re-paint those parts of the screen. A small shim now skips writes that don't change anything. HUD paint work fell by about 55–70% and layout by about 70%.
+- The level's walls, floors and ceilings were one mesh drawn every frame. They are now 9 m chunks that frustum and wall culling can skip.
+- Shaders for the level and common effects are compiled while the floor loads instead of mid-fight.
+- Result in the test: about 1.5× more frames at full resolution, and about 2× more on the CPU side alone (median frame 67–83 ms → 17–33 ms at 4× slowdown).
