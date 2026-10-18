@@ -43,9 +43,9 @@ async function facBuild(prog){
     if(F.shadows){renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.BasicShadowMap;renderer.shadowMap.autoUpdate=true;const sz=q>=2?1024:512;F.spot.shadow.mapSize.set(sz,sz);F.spot.shadow.camera.near=.12;F.spot.shadow.camera.far=16;F.spot.shadow.bias=0;F.U.uShT.value=1/sz;F.U.uShX.value=F.spot.shadow.matrix;
       for(const m of F.meshes){const k=m.material===F.M.emis||m.material===F.M.decal;m.castShadow=!k;}for(const d of F.doors)d.mesh.castShadow=true;}}
   F.hand=facHand();
-  if(FACW){F.shafts=FACW.shafts;F.dust=FACW.dust;F.beam=FACW.beam;F.post=FACW.post;}else{F.shafts=facShafts(W,F.U);F.dust=facDust(F.U);F.beam=facBeamCone(F.U);F.post=facPost();}
-  if(F.shafts)sc.add(F.shafts);sc.add(F.dust);sc.add(F.beam);
-  if(!FACW)FACW={W,M:F.M,U:F.U,AT:F.AT,geos:F.meshes.map(m=>({g:m.geometry,m:FMAT.find(k=>F.M[k]===m.material)||'prop',ro:m.renderOrder,band:m.userData.band})),shafts:F.shafts,dust:F.dust,beam:F.beam,post:F.post};
+  if(FACW){F.shafts=FACW.shafts;F.dust=FACW.dust;F.beam=FACW.beam;F.post=FACW.post;F.halo=FACW.halo;}else{F.shafts=facShafts(W,F.U);F.dust=facDust(F.U);F.beam=facBeamCone(F.U);F.post=facPost();F.halo=facGlows(W,F.U);}
+  if(F.shafts)sc.add(F.shafts);sc.add(F.dust);sc.add(F.beam);if(F.halo)sc.add(F.halo);
+  if(!FACW)FACW={W,M:F.M,U:F.U,AT:F.AT,geos:F.meshes.map(m=>({g:m.geometry,m:FMAT.find(k=>F.M[k]===m.material)||'prop',ro:m.renderOrder,band:m.userData.band})),shafts:F.shafts,dust:F.dust,beam:F.beam,post:F.post,halo:F.halo};
   F.post.mat.uniforms.uFade.value=1;F.post.mat.uniforms.uHurt.value=0;
   /* you */
   const s=W.start;F.pl=H.pl=Object.assign(H.pl,{x:s.x,y:FCY[s.k],z:s.z,vx:0,vz:0,vy:0,yaw:s.yaw,pitch:-.05,crouch:false,sta:1,tired:false,ground:true,bob:0,bobA:0,roll:0,light:true,bat:1,fear:0,hurt:0,ch:FAC.eye});
@@ -111,15 +111,15 @@ function facPlayer(F,dt){
   if(pl.ground){
     /* inertia: quick to get going, a short slide when you stop, and a sprint that does not turn on a coin */
     const cur=Math.hypot(pl.vx,pl.vz),tg=Math.hypot(tvx,tvz);
-    if(run&&cur>2&&tg>.1){const ca=Math.atan2(pl.vz,pl.vx),ta=Math.atan2(tvz,tvx);let d=ta-ca;d=Math.atan2(Math.sin(d),Math.cos(d));const mx=dt*3.4;const na=ca+clamp(d,-mx,mx),ns=cur+(tg-cur)*Math.min(1,dt*5);tvx=Math.cos(na)*ns;tvz=Math.sin(na)*ns;}
-    const k=tg>cur?(run?6.5:9):10.5,a=1-Math.exp(-k*dt);pl.vx+=(tvx-pl.vx)*a;pl.vz+=(tvz-pl.vz)*a;
+    let pivot=false;if(run&&cur>2&&tg>.1){const ca=Math.atan2(pl.vz,pl.vx),ta=Math.atan2(tvz,tvx);let d=ta-ca;d=Math.atan2(Math.sin(d),Math.cos(d));if(Math.abs(d)>1.9)pivot=true;else{const mx=dt*3.4;const na=ca+clamp(d,-mx,mx);tvx=Math.cos(na)*tg;tvz=Math.sin(na)*tg;}}
+    const k=pivot?13:tg>cur?(run?3.6:9):10.5,a=1-Math.exp(-k*dt);pl.vx+=(tvx-pl.vx)*a;pl.vz+=(tvz-pl.vz)*a;
   }
   if(pl.land>0){pl.land-=dt;pl.vx*=.9;pl.vz*=.9;}
   const ox=pl.x,oz=pl.z,h=pl.crouch?FAC.hc:FAC.h;
   facMove(F,pl,pl.vx*dt,pl.vz*dt,FAC.r,h,FAC.su);
   const mvx=(pl.x-ox)/Math.max(dt,1e-4),mvz=(pl.z-oz)/Math.max(dt,1e-4);
   /* walking into a closed door pushes it open */
-  for(const d of F.doors){if(d.bump){if(Math.abs(d.th)<1.1&&Math.abs(d.tgt)<1&&(Math.abs(pl.vx)+Math.abs(pl.vz))>.6){d.push=(d.push||0)+dt;if(d.push>.22){if(d.lock){if(!d.ratT||F.t>d.ratT){d.ratT=F.t+1.2;facSndRattle(F,d);facTip(F,'Locked',1.2);}}else{facDoorOpen(F,d,pl.x,pl.z,false);d.tgt*=.92;d.stiff=10;}d.push=0;}}d.bump=0;}else d.push=0;}
+  const wantMv=Math.hypot(tvx,tvz);for(const d of F.doors){if(d.bump){if(Math.abs(d.th)<1.1&&Math.abs(d.tgt)<1&&wantMv>1){d.push=(d.push||0)+dt;if(d.push>(run?.12:.22)){if(d.lock){if(!d.ratT||F.t>d.ratT){d.ratT=F.t+1.2;facSndRattle(F,d);facTip(F,'Locked',1.2);}}else{facDoorOpen(F,d,pl.x,pl.z,run);if(!run){d.tgt*=.92;d.stiff=10;}else facNoise(F,d.cx,d.y,d.cz,14);}d.push=0;}}d.bump=0;}else d.push=0;}
   /* where hitting a wall stopped you, lose that speed */
   if(Math.abs(mvx)<Math.abs(pl.vx)*.5)pl.vx=mvx;if(Math.abs(mvz)<Math.abs(pl.vz)*.5)pl.vz=mvz;
   /* the ground: step up stairs, follow them down, fall off ledges */
@@ -128,6 +128,8 @@ function facPlayer(F,dt){
   if(!pl.ground){pl.vy-=17*dt;pl.y+=pl.vy*dt;const g2=facGround(F,pl.x,pl.z,pl.y-pl.vy*dt,Math.max(.05,-pl.vy*dt+.05));
     if(pl.y<=g2){const drop=(pl.fall0||pl.y)-g2;pl.y=g2;pl.ground=true;const v=-pl.vy;pl.vy=0;
       if(drop>1.2){pl.land=Math.min(.6,drop*.12);F.dip=Math.min(.42,drop*.09);facSndLand(F,Math.min(1,drop/4));facNoise(F,pl.x,pl.y,pl.z,8+drop*3);try{vib&&vib([30+drop*15|0]);}catch(_){}if(drop>3)pl.sta=Math.max(0,pl.sta-.25);}else if(v>2)F.dip=.05;}}
+  /* 3.16: while falling past a ledge, keep the body out of the slab edge */
+  if(!pl.ground){for(let it=0;it<3;it++)if(facPush(F,pl,FAC.r,h,FAC.su)<.0005)break;}
   if(pl.y<-6){pl.y=FCY[2];}
   /* footsteps and how much noise they make */
   const sp=Math.hypot(mvx,mvz);F.speed=sp;
@@ -184,14 +186,14 @@ function facDemonInit(F){
   const dm=F.dm,W=F.W,p=W.peek;dm.isBody=2;dm.x=p.x;dm.z=p.z;dm.y=FCY[p.k];dm.face=Math.PI/2;dm.st='peek';dm.stT=0;dm.on=true;dm.g.visible=true;
   /* the stairwell door it peeks round is open */
   for(const d of F.doors)if(Math.abs(d.cx-6.25)<.3&&Math.abs(d.cz-3)<.6&&d.k===1){d.th=d.tgt=-1.5*facDoorSide(d,10,3);d.mesh.rotation.y=-(d.a0+d.th);}
-  F.dir={t:0,calm:0,lastSeen:-99,lastChase:-99,ambT:55,awayT:0,alertAt:-1,final:false,seenOnce:false};
+  F.dir={t:0,calm:0,lastSeen:0,lastChase:0,ambT:38,awayT:0,alertAt:-1,final:false,seenOnce:false};
 }
 function facDmPlace(F,x,y,z,face){const dm=F.dm;dm.x=x;dm.y=y;dm.z=z;if(face!=null)dm.face=face;dm.path=null;dm.on=true;dm.g.visible=true;dm.leap=null;dm.bash=null;}
 function facDmState(F,st){const dm=F.dm;if(dm.st!==st){dm.prev=dm.st;dm.st=st;dm.stT=0;dm.path=null;if(st==='search'){dm.sp=null;dm.looks=0;}if(st==='prowl')dm.goalP=null;}}
 /* the creature can see you: distance, your light, the light you stand in, crouching, cover */
 function facDmSee(F){
   const dm=F.dm,pl=F.pl,dx=pl.x-dm.x,dz=pl.z-dm.z,dy=pl.y-dm.y,dh=Math.hypot(dx,dz),d=Math.hypot(dh,dy*1.3);if(d>34)return 0;
-  const pr=facProbe(F.W,pl.x,pl.y+1,pl.z),lum=Math.min(1,((pr[0]+pr[1]+pr[2])*F.U.uPow.value+(pr[3]+pr[4]+pr[5])*F.U.uEmg.value)*.8);
+  const pr=facProbe(F.W,pl.x,pl.y+1,pl.z),amb0=FPLA(facKindAt(F.W,Math.floor(pl.z/FC)*FNX+Math.floor(pl.x/FC),pl.y+1))?.26:.12,lum=Math.min(1,Math.max(0,((pr[0]+pr[1]+pr[2])*F.U.uPow.value+(pr[3]+pr[4]+pr[5])*F.U.uEmg.value)*.8-amb0*Math.min(1,F.U.uPow.value)));
   let range=3.2+19*lum;
   if(pl.light&&F.lamp){const lx=dm.x-F.lamp.x,ly=dm.y+1.6-F.lamp.y,lz=dm.z-F.lamp.z,l=Math.hypot(lx,ly,lz)||1,c=(lx*F.lamp.dx+ly*F.lamp.dy+lz*F.lamp.dz)/l;range=Math.max(range,c>.85?32:13);}
   if(pl.crouch)range*=.58;if(F.speed>4)range*=1.15;if(dm.st==='chase')range=Math.max(range*1.7,15);
@@ -215,8 +217,8 @@ function facDmGo(F,tx,ty,tz,spd,dt){
       if(B.t>B.dur+.25||Math.abs(B.d.th)>.9)dm.bash=null;}return 'bash';}
   dm.repT=(dm.repT||0)-dt;const goal=facNodeNear(F,tx,ty,tz);
   if(!dm.path||dm.repT<=0||dm.goal!==goal){dm.repT=dm.st==='chase'?.3:1.2;dm.goal=goal;const a=facNodeNear(F,dm.x,dm.y,dm.z);dm.path=facPath(F,a,goal);dm.pi=0;dm.ahead=null;dm.wlT=0;}
-  const P=dm.path;if(!P||P.length<2){/* no route: walk straight if it is close */const dx=tx-dm.x,dz=tz-dm.z,l=Math.hypot(dx,dz);if(l<.4)return 'there';
-    facMove(F,dm,dx/l*spd*dt,dz/l*spd*dt,FDM.r,FDM.h,FDM.su);dm.fwant=Math.atan2(dx,dz);facDmGround(F);return l<1?'there':'move';}
+  const P=dm.path;if(!P||P.length<2){/* no route: walk straight if it is close */const dx=tx-dm.x,dz=tz-dm.z,l=Math.hypot(dx,dz),sameY=Math.abs(ty-dm.y)<1.2;if(l<.4&&sameY)return 'there';if(!sameY&&l<.4)return 'move';
+    facMove(F,dm,dx/l*spd*dt,dz/l*spd*dt,FDM.r,FDM.h,FDM.su);dm.fwant=Math.atan2(dx,dz);facDmGround(F);return l<1&&sameY?'there':'move';}
   /* drop the nodes already behind */
   while(dm.pi<P.length-1){const p=facNP(F,P[dm.pi]);if(Math.hypot(p[0]-dm.x,p[2]-dm.z)<.45&&Math.abs(p[1]-dm.y)<.7)dm.pi++;else break;}
   /* a door on the way: open it (or smash it when hunting) */
@@ -236,7 +238,7 @@ function facDmGo(F,tx,ty,tz,spd,dt){
     /* stuck against something: think again */
     if(Math.hypot(dm.x-ox,dm.z-oz)<st*.2){dm.stuck=(dm.stuck||0)+dt;if(dm.stuck>.5){dm.stuck=0;dm.path=null;dm.pi=0;}}else dm.stuck=0;}
   facDmGround(F);
-  const g=facNP(F,P[P.length-1]);return Math.hypot(g[0]-dm.x,g[2]-dm.z)<.6?'there':'move';
+  const g=facNP(F,P[P.length-1]);return Math.hypot(g[0]-dm.x,g[2]-dm.z)<.6&&Math.abs(g[1]-dm.y)<1?'there':'move';
 }
 function facDmGround(F){const dm=F.dm,g=facGround(F,dm.x,dm.z,dm.y,FDM.su);if(g>dm.y-.7&&g>-1e8)dm.y+=(g-dm.y)*.6;else dm.y=Math.max(g,dm.y-.3);}
 /* a random spot within reach of (x,y,z), ideally out of your sight */
@@ -257,7 +259,7 @@ function facDemonTick(F,dt){
     case 'peek':{/* standing at the stairwell door, looking down the corridor at you */dm.fwant=Math.atan2(dx,dz);
       const seen=facOnScreen(F,dm.x,dm.y+1.4,dm.z)&&dist<17&&facSee(F,pl.x,F.camY,pl.z,dm.x,dm.y+1.5,dm.z,false);if(seen){dm.seenT=(dm.seenT||0)+dt;if(!D.seenOnce&&dm.seenT>.12){D.seenOnce=1;facSting(F,1);}}
       if((dm.seenT||0)>.75||(dist<4.5&&pl.z<4.6)||dm.stT>40){facDmState(F,'withdraw');}break;}
-    case 'withdraw':{spd=2.6;res=facDmGo(F,4,FCY[1],6.5,spd,dt);if(res==='there'||dm.stT>4){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=18+Math.random()*10;}break;}
+    case 'withdraw':{spd=2.6;res=facDmGo(F,4,FCY[1],6.5,spd,dt);if(res==='there'||dm.stT>4){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=14+Math.random()*7;}break;}
     case 'away':break;
     case 'prowl':{spd=FDM.prowl*(D.final?1.6:1);
       if(dm.waitT>0){/* stops, listens, sniffs the air */dm.waitT-=dt;spd=0;if(Math.random()<dt*.5)facDmSniff(F);}
@@ -284,6 +286,10 @@ function facDemonTick(F,dt){
       if(dv<4.2&&Math.abs(pl.y-FCY[v.k])<1.5){/* it drops */v.fall=1;v.vy=0;facDmPlace(F,v.x,v.y-.2,v.z,Math.atan2(pl.x-v.x,pl.z-v.z));dm.drop={vy:0};facDmState(F,'drop');facSting(F,1.2);facSndGrate(F,v);}
       if(dm.stT>35){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=6;}break;}
     case 'drop':{dm.drop.vy-=16*dt;dm.y+=dm.drop.vy*dt;const g=facGround(F,dm.x,dm.z,dm.y+.05,.1);dm.fwant=Math.atan2(dx,dz);if(dm.y<=g){dm.y=g;facDmLand(F);facDmReveal(F,.4);}break;}
+    case 'cross':{spd=6.2;const B=dm.cross;res=facDmGo(F,B[0],B[1],B[2],spd,dt);
+      if(!dm.crossSeen&&dm.vis){dm.crossSeen=1;facSting(F,.8);}
+      if(dm.sees>0&&!dm.crossSaw){dm.crossSaw=1;if(dist<11&&Math.random()<.4){facDmRoar(F,1);facDmState(F,'chase');dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};break;}}
+      if(res==='there'||dm.stT>4.5){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=8+Math.random()*7;}break;}
     case 'kill':break;
   }
   if(dm.st==='prowl'||dm.st==='inv'||dm.st==='search'){
@@ -324,9 +330,9 @@ function facDirector(F,dt){
       if(!facAmbush(F)){const p=facDmSpot(F,pl.x,pl.y,pl.z,18,30,true,60);if(p){facDmPlace(F,p[0],p[1],p[2]);facDmState(F,'prowl');}else D.awayT=2;}}}
   /* long quiet stretches end in an ambush */
   const quiet=F.t-Math.max(D.lastSeen,D.lastChase);
-  if((dm.st==='prowl'||dm.st==='search')&&quiet>D.ambT&&!facOnScreen(F,dm.x,dm.y+1.2,dm.z)){if(facAmbush(F))D.ambT=50+Math.random()*30;else D.ambT+=8;}
+  if((dm.st==='prowl'||dm.st==='search')&&quiet>D.ambT&&!facOnScreen(F,dm.x,dm.y+1.2,dm.z)){if(facAmbush(F))D.ambT=32+Math.random()*22;else D.ambT+=6;}
   /* after a chase you got away from, it may leave for a while: silence */
-  if(dm.st==='prowl'&&dm.stT>25&&quiet>40&&Math.random()<dt*.04&&!D.final&&!facOnScreen(F,dm.x,dm.y+1.2,dm.z)){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=14+Math.random()*12;}
+  if(dm.st==='prowl'&&dm.stT>25&&quiet>40&&Math.random()<dt*.04&&!D.final&&!facOnScreen(F,dm.x,dm.y+1.2,dm.z)){dm.on=false;dm.g.visible=false;facDmState(F,'away');D.awayT=10+Math.random()*9;}
   /* the end: it always knows where you are */
   if(D.final){D.fT=(D.fT||0)-dt;if(D.fT<=0){D.fT=6;if(dm.st==='away'){const p=facDmSpot(F,pl.x,pl.y,pl.z,16,26,true,60);if(p){facDmPlace(F,p[0],p[1],p[2]);dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};facDmState(F,'inv');}}
       else if(dm.st!=='chase'&&dm.st!=='reveal'&&dm.st!=='drop'&&dm.st!=='stare'){/* it hears roughly where you are */dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};facDmState(F,'inv');}}}
@@ -339,7 +345,7 @@ function facAmbush(F){
   for(const d of F.doors)if(!d.lock&&Math.abs(d.th)<.05&&Math.abs(d.y-pl.y)<.5&&ahead(d.cx,d.cz,4.5,13))opts.push(['door',d]);
   for(const d of F.doors)if(!d.lock&&Math.abs(d.th)>.9&&Math.abs(d.y-pl.y)<.5&&ahead(d.cx,d.cz,5,14)&&facOnScreen(F,d.cx,d.y+1.2,d.cz))opts.push(['slam',d]);
   if(Math.random()<.5){const lvl=facBand(pl.y+.1),near=pl.x>16&&pl.x<36&&pl.z>12&&pl.z<26;if(near&&(lvl===0||lvl===1))opts.push(['stare',lvl]);}
-  opts.push(['corner']);
+  opts.push(['corner'],['cross'],['cross']);
   for(let tries=0;tries<4&&opts.length;tries++){const i=(Math.random()*opts.length)|0,o=opts[i];opts.splice(i,1);
     if(o[0]==='vent'){const v=o[1];v.used=true;dm.amb={v};facDmPlace(F,v.x,v.y+.4,v.z);dm.g.visible=false;dm.on=true;facDmState(F,'vent');F.quietT=4;return true;}
     if(o[0]==='door'){const d=o[1],s=-facDoorSide(d,pl.x,pl.z),bx=d.cx+d.nx*s*1.25,bz=d.cz+d.nz*s*1.25;const n=facNodeNear(F,bx,d.y,bz);if(n<0)continue;const p=facNP(F,n);
@@ -349,8 +355,15 @@ function facAmbush(F){
       dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};facDmState(F,'search');dm.stT=-4;F.quietT=2.5;facDmBreath(F);return true;}
     if(o[0]==='stare'){const lvl=o[1],ty=lvl===0?FCY[1]:FCY[0];const p=facDmSpot(F,pl.x,ty,pl.z,5,11,false,60);if(!p||Math.abs(p[1]-ty)>.3)continue;
       if(!facSee(F,pl.x,F.camY,pl.z,p[0],p[1]+1.6,p[2],false))continue;facDmPlace(F,p[0],p[1],p[2],Math.atan2(pl.x-p[0],pl.z-p[2]));facDmState(F,'stare');F.quietT=1.5;return true;}
+    if(o[0]==='cross'){let C=null;const N=F.nav;
+      for(let t=0;t<30&&!C;t++){const ang=yaw+(Math.random()-.5)*.8,dd=9+Math.random()*9,q=facNodeNear(F,pl.x-Math.sin(ang)*dd,pl.y,pl.z-Math.cos(ang)*dd);if(q<0)continue;const M=facNP(F,q);if(Math.abs(M[1]-pl.y)>.6||!ahead(M[0],M[2],8.5,18.5))continue;
+        if(!facSee(F,pl.x,F.camY,pl.z,M[0],M[1]+1.2,M[2],false))continue;
+        const d=Math.hypot(M[0]-pl.x,M[2]-pl.z),px=-(M[2]-pl.z)/d,pz=(M[0]-pl.x)/d,side=sg=>{for(let s=1.5;s<=5;s+=.5){const q=facNodeNear(F,M[0]+px*s*sg,M[1],M[2]+pz*s*sg);if(q<0)continue;const Q=facNP(F,q);
+            if(Math.abs(Q[1]-M[1])<.3&&!facSee(F,pl.x,F.camY,pl.z,Q[0],Q[1]+1.2,Q[2],false)&&!facSee(F,pl.x,F.camY,pl.z,Q[0],Q[1]+.4,Q[2],false))return Q;}return null;};
+        const A=side(1),B=side(-1);if(!A||!B)continue;if(!facWalkLine(F,A[0],A[1],A[2],M[0],M[1],M[2])||!facWalkLine(F,M[0],M[1],M[2],B[0],B[1],B[2]))continue;C=Math.random()<.5?[A,B]:[B,A];}
+      if(!C)continue;facDmPlace(F,C[0][0],C[0][1],C[0][2],Math.atan2(C[1][0]-C[0][0],C[1][2]-C[0][2]));dm.cross=C[1];dm.crossSeen=0;dm.crossSaw=0;facDmState(F,'cross');F.quietT=1.2;return true;}
     if(o[0]==='corner'){let p=null;for(let t=0;t<50&&!p;t++){const q=facDmSpot(F,pl.x,pl.y,pl.z,9,15,true,20);if(q&&Math.abs(q[1]-pl.y)<.6&&ahead(q[0],q[2],8,16))p=q;}
-      if(!p)continue;facDmPlace(F,p[0],p[1],p[2],Math.atan2(pl.x-p[0],pl.z-p[2]));dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};facDmState(F,'chase');F.quietT=2.5;return true;}}
+      if(!p)continue;facDmPlace(F,p[0],p[1],p[2],Math.atan2(pl.x-p[0],pl.z-p[2]));dm.mem={x:pl.x,y:pl.y,z:pl.z,t:F.t};facDmState(F,'chase');F.quietT=2.5;facDmRoar(F,.9);facSting(F,.9);return true;}}
   return false;
 }
 /* ---------- sound: the room, the ducts, the hum of the tubes, the radio on your belt, your heart, and the creature ---------- */
@@ -467,12 +480,12 @@ function facCam(F,dt){
   const Hd=F.hand;F.hy=F.hy==null?pl.yaw:F.hy;F.hp=F.hp==null?pl.pitch:F.hp;
   let dy=pl.yaw-F.hy;dy=Math.atan2(Math.sin(dy),Math.cos(dy));F.hy+=dy*Math.min(1,dt*13);F.hp+=(pl.pitch-F.hp)*Math.min(1,dt*13);
   const lagY=clamp(Math.atan2(Math.sin(F.hy-pl.yaw),Math.cos(F.hy-pl.yaw)),-.25,.25),lagP=clamp(F.hp-pl.pitch,-.25,.25),ba=pl.bobA*(F.running?1.6:1);
-  const off=new T.Vector3(.16+lagY*.12+Math.sin(pl.bob)*.012*ba,-.19-lagP*.1+Math.abs(Math.sin(pl.bob))*-.01*ba-(F.running?.03:0),-.36);
+  const off=(F._v1||(F._v1=new T.Vector3())).set(.16+lagY*.12+Math.sin(pl.bob)*.012*ba,-.19-lagP*.1+Math.abs(Math.sin(pl.bob))*-.01*ba-(F.running?.03:0),-.36);
   off.applyQuaternion(cam.quaternion);Hd.g.position.copy(cam.position).add(off);
   Hd.g.quaternion.copy(cam.quaternion);Hd.g.rotateY(lagY*.9+.05);Hd.g.rotateX(lagP*.9+(F.running?-.12:0)+Math.sin(pl.bob*2)*.02*ba);Hd.g.rotateZ(pl.roll*.5);
   Hd.g.visible=!H.dead&&!H.won;Hd.g.updateMatrixWorld(true);
-  const lp=new T.Vector3();Hd.lens.getWorldPosition(lp);const ld=new T.Vector3(0,0,-1).applyQuaternion(Hd.g.quaternion).normalize();
-  F.lamp={x:lp.x,y:lp.y,z:lp.z,dx:ld.x,dy:ld.y,dz:ld.z};
+  const lp=F._v2||(F._v2=new T.Vector3());Hd.lens.getWorldPosition(lp);const ld=(F._v3||(F._v3=new T.Vector3())).set(0,0,-1).applyQuaternion(Hd.g.quaternion).normalize();
+  {const LM=F.lamp||(F.lamp={});LM.x=lp.x;LM.y=lp.y;LM.z=lp.z;LM.dx=ld.x;LM.dy=ld.y;LM.dz=ld.z;}
   /* the beam: weak, and weaker and flickering as the battery dies */
   const lowB=pl.bat<.22?(.55+pl.bat*2)*(Math.random()<(.22-pl.bat)*1.2?.25:1):1,on=pl.light&&!H.won?1.75*lowB:0;F.lightK=on;
   const U=F.U;U.uCam.value.copy(cam.position);U.uLP.value.copy(lp);U.uLD.value.copy(ld);U.uLOn.value=on;U.uLCos.value.set(Math.cos(.2),Math.cos(.42));
@@ -482,7 +495,7 @@ function facCam(F,dt){
   Hd.lens.material.color.setRGB(on?1:.15,on?.96:.15,on?.85:.14);
   /* the hand is lit by the light where you stand */
   {const p=facProbe(F.W,pl.x,F.camY,pl.z),k=1.4,r=Math.min(1,p[0]*k*U.uPow.value+p[3]*k*U.uEmg.value+.035),g=Math.min(1,p[1]*k*U.uPow.value+p[4]*k*U.uEmg.value+.035),b=Math.min(1,p[2]*k*U.uPow.value+p[5]*k*U.uEmg.value+.035);
-    Hd.amb.color.setRGB(r*.55,g*.55,b*.55);Hd.amb.intensity=1;Hd.key.color.setRGB(r,g,b);Hd.key.intensity=1.1;Hd.key.position.copy(cam.position).add(new T.Vector3(-.6,1.2,.6).applyQuaternion(cam.quaternion));Hd.key.target.position.copy(Hd.g.position);Hd.key.target.updateMatrixWorld();}
+    Hd.amb.color.setRGB(r*.55,g*.55,b*.55);Hd.amb.intensity=1;Hd.key.color.setRGB(r,g,b);Hd.key.intensity=1.1;Hd.key.position.copy(cam.position).add((F._v4||(F._v4=new T.Vector3())).set(-.6,1.2,.6).applyQuaternion(cam.quaternion));Hd.key.target.position.copy(Hd.g.position);Hd.key.target.updateMatrixWorld();}
   /* light on the creature: the light where it stands, and your beam */
   {const dm=F.dm,p=facProbe(F.W,dm.x,dm.y+1.2,dm.z),k=.8;F.amb.color.setRGB(Math.min(1,p[0]*k*U.uPow.value+p[3]*k*U.uEmg.value+.015),Math.min(1,p[1]*k*U.uPow.value+p[4]*k*U.uEmg.value+.012),Math.min(1,p[2]*k*U.uPow.value+p[5]*k*U.uEmg.value+.012));F.amb.intensity=1;
     /* and the nearest working tube lights it from where it really is, so it has shape */
@@ -507,7 +520,9 @@ function facCam(F,dt){
     const dm=F.dm;let v=dm.on&&dm.st!=='vent'&&dm.st!=='away';if(v){const dd=Math.hypot(dm.x-cx,dm.y+1.2-cy_,dm.z-cz);if(dd>34)v=false;else if(dd>2.6){const fr=F.frus||(F.frus=new T.Frustum()),m4=F.m4||(F.m4=new T.Matrix4());m4.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);fr.setFromProjectionMatrix(m4);
         const sp=F.sph||(F.sph=new T.Sphere());sp.center.set(dm.x,dm.y+1.1,dm.z);sp.radius=1.5;if(!fr.intersectsSphere(sp))v=false;else v=facSee(F,cx,cy_,cz,dm.x,dm.y+1.9,dm.z,false)||facSee(F,cx,cy_,cz,dm.x,dm.y+1,dm.z,false)||facSee(F,cx,cy_,cz,dm.x,dm.y+.3,dm.z,false);}}
     if(window.__facHideDm)v=false;dm.vis=v;dm.g.visible=v;}
-  if(F.post){const P=F.post.mat.uniforms;P.uTime.value=F.t;P.uCA.value=.0035+pl.fear*.006+(F.shake||0)*.01;P.uGrain.value=.055+pl.fear*.03;P.uVig.value=.5+pl.fear*.25;P.uFear.value=pl.fear*.5;P.uHurt.value=Math.max(0,(P.uHurt.value||0)-dt*1.5);}
+  /* 3.16: which kind of light you stand in (cold teal concrete or the warm offices) steers the colour grade */
+  {const p=facProbe(F.W,pl.x,F.camY,pl.z),pw=U.uPow.value,em=U.uEmg.value,rr=p[0]*pw+p[3]*em,bb=p[2]*pw+p[5]*em,z=clamp((rr/(bb+.02)-.35)/.9,0,1);F.zone=F.zone==null?z:F.zone+(z-F.zone)*Math.min(1,dt*2.5);}
+  if(F.post){const P=F.post.mat.uniforms;P.uTime.value=F.t;P.uZone.value=F.zone;P.uCA.value=.0035+pl.fear*.006+(F.shake||0)*.01;P.uGrain.value=.055+pl.fear*.03;P.uVig.value=.5+pl.fear*.25;P.uFear.value=pl.fear*.5;P.uHurt.value=Math.max(0,(P.uHurt.value||0)-dt*1.5);}
 }
 /* ---------- the screen ---------- */
 function facHudInit(F){
@@ -524,7 +539,9 @@ function facSay(F,t,s){hzSay(t,s||2);}
 function facHud(F){
   const pl=F.pl,set=(id,v)=>{const e=$(id);if(e&&e.textContent!==v)e.textContent=v;};
   set('hzdist',F.stage==='find'?(F.fuses<3?'FUSES '+F.fuses+' / 3':'BREAKER '+F.brk.n+' / 3'):F.stage==='wait'?'THE LIFT · '+Math.ceil(Math.max(0,F.lift.arrive-F.t))+' s':'GET IN THE LIFT');
-  set('hzbest',F.stage==='find'?(F.fuses<3?'One fuse on each level. The breaker is by the freight lift, in the basement.':'Put the fuses in the breaker by the freight lift (basement).'):F.stage==='wait'?'Stay alive.':'The lift is open.');
+  {const hint=F.stage==='find'?(F.fuses<3?'One fuse on each level. The breaker is by the freight lift, in the basement.':'Put the fuses in the breaker by the freight lift (basement).'):F.stage==='wait'?'Stay alive.':'The lift is open.';
+    /* 3.16: the long hint shows when it changes, then fades, so the screen stays clean like the reference */
+    if(hint!==F.hintTx){F.hintTx=hint;F.hintT=F.t;}set('hzbest',hint);const e=$('hzbest');if(e){const o=F.t-F.hintT<14?'1':'0';if(e.style.opacity!==o){e.style.transition='opacity 1.6s';e.style.opacity=o;}}}
   const st=$('hzsta');if(st){const on=pl.sta<.995||F.running;if(st.classList.contains('on')!==on)st.classList.toggle('on',on);if(st.classList.contains('tired')!==pl.tired)st.classList.toggle('tired',pl.tired);const w=Math.round(pl.sta*100)+'%';if(st.firstChild.style.width!==w)st.firstChild.style.width=w;}
   set('hzkeys',(pl.light?'LIGHT ':'LIGHT OFF · ')+Math.round(pl.bat*100)+'%'+(F.held&&F.fuses===3?'':'' ));
   const a=F.aim,c=$('fcross');if(c&&c.classList.contains('on')!==!!a)c.classList.toggle('on',!!a);
@@ -534,7 +551,8 @@ function facHud(F){
 /* ---------- each frame ---------- */
 function facSize(F){
   const H=HZ,w=gameEl.clientWidth||innerWidth,h=gameEl.clientHeight||innerHeight,a=w/Math.max(1,h);let q=1;try{q=qFactor();}catch(_){}
-  const RH=Math.min(h*Math.min(2,devicePixelRatio||1),window.__hzRH||Math.min(900,640*clamp(q,.6,1.35))*(H.lowRes?.7:1))|0,RW=Math.min(1700,Math.round(RH*a));
+  if(F.rs==null)F.rs=isTouch?.85:1;
+  const RH=Math.max(Math.min(360,h),Math.min(h*Math.min(2,devicePixelRatio||1),window.__hzRH||Math.min(900,640*clamp(q,.6,1.35))*F.rs))|0,RW=Math.min(1700,Math.round(RH*a));
   const cv=renderer.domElement;if(cv.width!==RW||cv.height!==RH){renderer.setSize(RW,RH,false);cam.aspect=a;cam.updateProjectionMatrix();}
   if(F.post)F.post.size(RW,RH);
 }
@@ -543,7 +561,10 @@ function facTick(dt){
   facSize(F);
   if(H.loading||H.paused){facCam(F,0);if(F.au&&AC)F.au.amb.gain.setTargetAtTime(.01,AC.currentTime,.3);return;}
   dt=Math.min(dt,1/20);F.t+=dt;H.t=F.t;
-  {const now=performance.now(),rd=H.lastNow?(now-H.lastNow)/1000:.016;H.lastNow=now;H.fpsA=(H.fpsA||60)*.95+(1/Math.max(.001,rd))*.05;}if(F.t>5&&H.fpsA<26&&!H.lowRes)H.lowRes=true;
+  {const now=performance.now(),rd=H.lastNow?(now-H.lastNow)/1000:.016;H.lastNow=now;H.fpsA=(H.fpsA||60)*.95+(1/Math.max(.001,rd))*.05;
+    /* 3.16: hold the frame rate by changing the render size a step at a time (never below 360 lines) */
+    if(rd<.25&&!window.__facManual&&!window.__hzRH){F.ftA=F.ftA==null?16.7:F.ftA*.94+rd*1000*.06;F.rsT=(F.rsT||0)+rd;
+      if(F.rsT>1.2){F.rsT=0;if(F.ftA>19.5&&F.rs>.5){F.rs=Math.max(.5,F.rs*.87);F.rsGood=0;}else if(F.ftA<13.5&&F.rs<1){if(++F.rsGood>=3){F.rs=Math.min(1,F.rs*1.06);F.rsGood=0;}}else F.rsGood=0;H.lowRes=F.rs<.72;}}}
   if(H.dead){facDeadTick(F,dt);facAudio(F,dt);return;}
   if(H.won){facWinTick(F,dt);facCam(F,dt);return;}
   facPlayer(F,dt);facDoorsTick(F,dt);facDemonTick(F,dt);facDirector(F,dt);facItems(F,dt);
@@ -602,10 +623,10 @@ function facDispose(H,keep){
   try{facAudioStop(F);}catch(_){}
   try{if(HZA){if(F.dmat0)HZA.mesh.material=F.dmat0;if(HZA.root.parent)HZA.root.parent.remove(HZA.root);}if(F.dm&&F.dm.mix)F.dm.mix.stopAllAction();if(F.dmat)F.dmat.dispose();}catch(_){}
   /* what belongs to this run only: doors, pickups, the hand, the lift doors */
-  const kept=new Set();if(keep&&FACW){for(const o of FACW.geos)kept.add(o.g);for(const o of[FACW.shafts,FACW.dust,FACW.beam])if(o)kept.add(o.geometry);}
+  const kept=new Set();if(keep&&FACW){for(const o of FACW.geos)kept.add(o.g);for(const o of[FACW.shafts,FACW.dust,FACW.beam,FACW.halo])if(o)kept.add(o.geometry);}
   try{const seen=new Set();const dis=o=>{if(o.geometry&&!seen.has(o.geometry)&&!kept.has(o.geometry)){seen.add(o.geometry);o.geometry.dispose();}};if(F.scene)F.scene.traverse(dis);if(F.hand)F.hand.sc.traverse(dis);}catch(_){}
   try{if(F.hand)for(const m of F.hand.mats)m.dispose();if(F.glowMat){F.glowMat.map.dispose();F.glowMat.dispose();}if(F.handleMat)F.handleMat.dispose();for(const m of F.liftMats||[])m.dispose();if(F.ventMat)F.ventMat.dispose();}catch(_){}
-  if(!keep){try{for(const k in F.M){const m=F.M[k];for(const t of m.userData.tex||[])t.dispose();m.dispose();}for(const o of[F.shafts,F.dust,F.beam])if(o)o.material.dispose();if(F.post)F.post.dispose();}catch(_){}FACW=null;}
+  if(!keep){try{for(const k in F.M){const m=F.M[k];for(const t of m.userData.tex||[])t.dispose();m.dispose();}for(const o of[F.shafts,F.dust,F.beam,F.halo])if(o)o.material.dispose();if(F.post)F.post.dispose();}catch(_){}FACW=null;}
   try{renderer.setRenderTarget(null);$('view').classList.remove('hzfac');if(F.spot){F.spot.castShadow=false;if(F.spot.shadow.map){F.spot.shadow.map.dispose();F.spot.shadow.map=null;}}renderer.shadowMap.enabled=!!F.shadow0;if(F.U){F.U.uShM.value=null;F.U.uShOn.value=0;}if(HZA)HZA.mesh.castShadow=false;}catch(_){}
   H.fac=null;H.scene=null;
 }

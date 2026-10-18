@@ -121,13 +121,13 @@ function facDoorGeo(F,M,d){
       for(const [a,b] of[[-1,-1],[1,-1],[1,1],[-1,1]]){const v=c.slice();v[ax]+=sg*e[ax];v[o[0]]+=a*e[o[0]];v[o[1]]+=b*e[o[1]];p.push(v);}
       /* keep the winding facing out */const e1=[p[1][0]-p[0][0],p[1][1]-p[0][1],p[1][2]-p[0][2]],e2=[p[2][0]-p[0][0],p[2][1]-p[0][1],p[2][2]-p[0][2]],cr=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
       if(cr[0]*nrm[0]+cr[1]*nrm[1]+cr[2]*nrm[2]<0)p.reverse();quad(p,nrm,huv,1);}};
-  for(const sd of[1,-1]){box(w-.1,1.02,sd*(t/2+.008),.028,.028,.008);box(w-.155,1.02,sd*(t/2+.035),.065,.011,.011);box(w-.1,1.02,sd*(t/2+.02),.01,.01,.014);}
+  for(const sd of[1,-1]){box(w-.1,1.02,sd*(t/2+.008),.028,.028,.008);box(w-.155,1.02,sd*(t/2+.035),.065,.011,.011);box(w-.1,1.02,sd*(t/2+.02),.01,.01,.014);box(w-.1,1.3,sd*(t/2+.008),.024,.024,.009);}
   g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('normal',new T.Float32BufferAttribute(Nn,3));g.setAttribute('uv',new T.Float32BufferAttribute(Uv,2));g.setIndex(I);
   /* light baked once, as it is when the door is shut */
   const col=FDS[d.style]||FDS.grey,cnt=n,tn=new Uint8Array(cnt*4),bk=new Uint8Array(cnt*4),b2=new Uint8Array(cnt*4),ld=new Int8Array(cnt*4),o=new Float32Array(10),ca=Math.cos(d.a0),sa=Math.sin(d.a0);
   for(let i=0;i<cnt;i++){const lx=P[i*3],ly=P[i*3+1],lz=P[i*3+2],wx=d.hx+lx*ca-lz*sa,wz=d.hz+lx*sa+lz*ca,wy=d.y+ly,nxl=Nn[i*3],nzl=Nn[i*3+2],wnx=nxl*ca-nzl*sa,wnz=nxl*sa+nzl*ca;
     facBakeVert(F.W,wx,wy,wz,wnx,Nn[i*3+1],wnz,wx+wnx*.08+(d.hx+ca*w/2-wx)*.05,wy+Nn[i*3+1]*.08+(d.y+1.1-wy)*.05,wz+wnz*.08+(d.hz+sa*w/2-wz)*.05,o,0);
-    if(Hd[i]){tn[i*4]=200;tn[i*4+1]=198;tn[i*4+2]=190;tn[i*4+3]=200;}else{tn[i*4]=col[0]*255;tn[i*4+1]=col[1]*255;tn[i*4+2]=col[2]*255;tn[i*4+3]=110;}
+    if(Hd[i]){const br=d.style==='green'||d.style==='blue';tn[i*4]=br?215:200;tn[i*4+1]=br?168:198;tn[i*4+2]=br?78:190;tn[i*4+3]=br?230:200;}else{tn[i*4]=col[0]*255;tn[i*4+1]=col[1]*255;tn[i*4+2]=col[2]*255;tn[i*4+3]=110;}
     for(let k=0;k<3;k++){bk[i*4+k]=Math.round(Math.sqrt(Math.min(1,o[k]/4))*255);b2[i*4+k]=Math.round(Math.sqrt(Math.min(1,o[3+k]/4))*255);}bk[i*4+3]=b2[i*4+3]=255;
     const l=Math.hypot(o[6],o[7],o[8]);if(l>1e-5){/* back into the leaf's own frame, since the mesh turns it */const gx=o[6]/l,gz=o[8]/l;ld[i*4]=Math.round((gx*ca+gz*sa)*127);ld[i*4+1]=Math.round(o[7]/l*127);ld[i*4+2]=Math.round((-gx*sa+gz*ca)*127);ld[i*4+3]=Math.round(Math.min(1,l/Math.max(o[9],1e-5))*127);}}
   g.setAttribute('tint',new T.BufferAttribute(tn,4,true));g.setAttribute('bake',new T.BufferAttribute(bk,4,true));g.setAttribute('bake2',new T.BufferAttribute(b2,4,true));g.setAttribute('ldir',new T.BufferAttribute(ld,4,true));

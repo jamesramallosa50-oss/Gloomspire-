@@ -28,19 +28,27 @@ function facCrack(A,H,w,h,x,y,len,seed,dark){const R=facRng(seed);let a=R()*6.28
   if(R()<.02&&len>20){facCrack(A,H,w,h,x,y,len*.35|0,seed+i,dark);}}}
 function facTextures(sc){
   sc=sc||1;const S=v=>Math.max(64,Math.round(v*sc));const out={};
-  /* --- board-formed concrete: 3 m square, a board seam every 0.5 m, tie holes, pores, damp streaks --- */
-  {const w=S(512),h=S(512),n1=facFbm(11,4,5),n2=facFbm(12,16,3),gr=facFbm(13,8,4),st=facFbm(14,6,4),R=facRng(15),holes=[],pores=[];
-    for(let b=0;b<6;b++)for(let c=0;c<4;c++)holes.push([(c+.5+(b%2)*.5)/4,(b+.5)/6]);for(let i=0;i<260;i++)pores.push([R(),R(),.0015+R()*.003]);
-    const boardOff=[];for(let b=0;b<6;b++)boardOff.push((R()-.5)*14);
-    out.wallC=facSurf(w,h,(u,v,px,py,o)=>{const b=Math.min(5,Math.floor(v*6)),fv=v*6-b;
-      let g=150+(n1(u,v)-.5)*44+(n2(u,v)-.5)*18+boardOff[b]+(gr(u*.25,v*3+b)-.5)*14;
-      let ht=(n2(u,v)-.5)*.6+boardOff[b]*.02;
-      const sd=Math.min(fv,1-fv)*h/6;if(sd<1.6){g-=38*(1-sd/1.6);ht-=1.2*(1-sd/1.6);}else if(sd<3.2){g+=6;ht+=.25;}
-      for(const q of holes){const dx=(u-q[0])*w,dy=(v-q[1])*h,d=Math.hypot(Math.abs(dx)>w/2?w-Math.abs(dx):dx,dy);if(d<5*sc){g=g*.45;ht-=2.2*(1-d/(5*sc));}else if(d<7*sc){g-=10;}}
-      const s=st(u*3,v*.5);const streak=Math.max(0,s-.55)*2.2*(.4+.6*v);g-=streak*40;
-      o.r=g*.96;o.g=g*1.0;o.b=g*.99;o.s=.12+streak*.5;o.h=ht;},
-      (A,H,w,h)=>{for(const p of pores){const x=(p[0]*w)|0,y=(p[1]*h)|0,r=Math.max(1,p[2]*w);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;const k=((y+dy+h)%h)*w+((x+dx+w)%w);A[k*4]*=.55;A[k*4+1]*=.55;A[k*4+2]*=.55;H[k]-=1;}}
-        for(let i=0;i<3;i++)facCrack(A,H,w,h,R()*w,R()*h,40+R()*60,200+i,.78);});}
+  /* --- board-formed concrete (3.16): 3 m square, ten boards of 0.3 m. Each board has its own tone and a faint wood-grain
+     imprint, the seams are thin with a small lip, the boards butt end to end here and there; a few small tie marks,
+     very few pores, soft mottling and damp streaks running down. Smooth, like the reference, not pockmarked. --- */
+  {const w=S(512),h=S(512),NB=10,n1=facFbm(11,4,5),n2=facFbm(12,16,3),grain=facFbm(13,4,3),st=facFbm(14,6,4),mot=facFbm(16,2,4),R=facRng(15),pores=[],ties=[];
+    for(let i=0;i<60;i++)pores.push([R(),R(),.0008+R()*.0014]);
+    for(let i=0;i<5;i++)ties.push([(i+.5)/5+(R()-.5)*.06,(1+Math.floor(R()*(NB-1)))/NB]);
+    const boardOff=[],joint=[],grainK=[];for(let b=0;b<NB;b++){boardOff.push((R()-.5)*22);joint.push(R());grainK.push(.6+R()*.8);}
+    out.wallC=facSurf(w,h,(u,v,px,py,o)=>{const b=Math.min(NB-1,Math.floor(v*NB)),fv=v*NB-b;
+      const gn=grain(u+b*.37,v*20);
+      let g=146+(n1(u,v)-.5)*30+(mot(u,v)-.5)*40+(n2(u,v)-.5)*8+boardOff[b]+(gn-.5)*16*grainK[b];
+      let ht=(n2(u,v)-.5)*.25+(gn-.5)*.35*grainK[b]+boardOff[b]*.012;
+      /* the seam between boards: a dark hairline, and the edge of the board above sits a touch proud */
+      const sd=Math.min(fv,1-fv)*h/NB;if(sd<1.1){g-=24*(1-sd/1.1);ht-=.9*(1-sd/1.1);}else if(fv>.5&&sd<2.4){g+=2.5;ht+=.12;}
+      /* boards butting end to end */
+      {let du=Math.abs(u-joint[b]);du=Math.min(du,1-du)*w;if(du<.9){g-=18*(1-du/.9);ht-=.6;}}
+      for(const q of ties){let dx=Math.abs(u-q[0]);dx=Math.min(dx,1-dx)*w;const dy=(v-q[1])*h,d=Math.hypot(dx,dy);if(d<2.6*sc){g*=.72;ht-=1.2*(1-d/(2.6*sc));}else if(d<4*sc){g+=5;}}
+      /* damp running down from the top and pooling low */
+      const s=st(u*3,v*.5),streak=Math.max(0,s-.56)*2*(.35+.65*v);g-=streak*34;const low=Math.max(0,.16-v)*3;g-=low*(mot(u*2,v)*30);
+      o.r=g*.95;o.g=g;o.b=g*1.0;o.s=.1+streak*.45;o.h=ht;},
+      (A,H,w,h)=>{for(const p of pores){const x=(p[0]*w)|0,y=(p[1]*h)|0,r=Math.max(1,p[2]*w);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r*r)continue;const k=((y+dy+h)%h)*w+((x+dx+w)%w);A[k*4]*=.8;A[k*4+1]*=.8;A[k*4+2]*=.8;H[k]-=.6;}}
+        for(let i=0;i<2;i++)facCrack(A,H,w,h,R()*w,R()*h,40+R()*50,200+i,.86);});}
   /* --- plaster over a red dado: 2 m wide, 4 m tall (v=0 at the floor). Dark skirting, red paint to 1.25 m, a stripe, then yellow --- */
   {const w=S(512),h=S(1024),n1=facFbm(21,4,5),n2=facFbm(22,24,3),peel=facFbm(23,5,5),stn=facFbm(24,3,5),scuff=facFbm(25,12,4),R=facRng(26);
     out.wallP=facSurf(w,h,(u,v,px,py,o)=>{const y=v*4;let r,g,b,s,ht=(n2(u,v*2)-.5)*.5;
@@ -51,22 +59,25 @@ function facTextures(sc){
         const dirt=Math.max(0,.45-y)*1.6;r*=1-dirt*.5;g*=1-dirt*.5;b*=1-dirt*.45;
         if(pe>.72&&y>.25){const k=Math.min(1,(pe-.72)*9);r=r*(1-k)+150*k;g=g*(1-k)+148*k;b=b*(1-k)+138*k;s=.08;ht-=k*1.2;}}
       else if(y<1.31){r=92;g=24;b=20;s=.3;ht+=.6;}
-      else{r=214+(n1(u,v*2)-.5)*26;g=182+(n1(u,v*2)-.5)*22;b=62+(n1(u,v*2)-.5)*14;s=.28;
-        if(pe>.7){const k=Math.min(1,(pe-.7)*7);r=r*(1-k)+178*k;g=g*(1-k)+174*k;b=b*(1-k)+160*k;s=.06;ht-=k*1.3;if(pe>.7&&pe<.73){r*=.7;g*=.7;b*=.7;}}
+      else{r=220+(n1(u,v*2)-.5)*24;g=196+(n1(u,v*2)-.5)*22;b=78+(n1(u,v*2)-.5)*14;s=.28;
+        if(pe>.77){const k=Math.min(1,(pe-.77)*8);r=r*(1-k)+190*k;g=g*(1-k)+178*k;b=b*(1-k)+150*k;s=.06;ht-=k*1.1;if(pe<.795){r*=.78;g*=.78;b*=.78;}}
         const drip=Math.max(0,wd-.52)*2.6*Math.min(1,(y-1.3)/2.2);r*=1-drip*.45;g*=1-drip*.5;b*=1-drip*.6;s+=drip*.2;
         const top=Math.max(0,y-3.3)*1.4;r*=1-top*.35;g*=1-top*.38;b*=1-top*.4;}
       o.r=r;o.g=g;o.b=b;o.s=s;o.h=ht;},
-      (A,H,w,h)=>{for(let i=0;i<9;i++)facCrack(A,H,w,h,R()*w,h*(.35+R()*.6),50+R()*140,300+i,.6);});}
+      (A,H,w,h)=>{for(let i=0;i<4;i++)facCrack(A,H,w,h,R()*w,h*(.35+R()*.6),40+R()*90,300+i,.7);});}
   /* --- floor tiles: 4 x 4 tiles of 0.6 m in a 2.4 m square, dark grout, grime at the joints, the odd cracked tile --- */
-  {const w=S(512),h=S(512),n1=facFbm(31,8,4),n2=facFbm(32,32,2),gr=facFbm(33,4,4),R=facRng(34),tv=[];for(let i=0;i<16;i++)tv.push([(R()-.5)*18,R()]);
-    out.tile=facSurf(w,h,(u,v,px,py,o)=>{const tx=Math.floor(u*4),ty=Math.floor(v*4),fu=u*4-tx,fv=v*4-ty,t=tv[ty*4+tx];
-      const e=Math.min(fu,1-fu,fv,1-fv)*w/4,gw=2.2*sc;
-      let g=182+t[0]+(n1(u,v)-.5)*16+(n2(u,v)-.5)*8,s=.82,ht=0;
-      if(e<gw){g=64+(n2(u,v)-.5)*16;s=.18;ht=-1.4;}
-      else{const gm=Math.max(0,1-(e-gw)/(9*sc));g-=gm*30*(.5+gr(u,v));s-=gm*.35;ht=-gm*.3+(e<gw+1.5?-.5:0);
-        const big=gr(u,v);if(big>.62){g-=(big-.62)*80;s*=.8;}}
+  /* 3.16: 3 x 3 tiles of 0.8 m (as big as the reference's), thin grout, a fine speckle in the glaze */
+  {const w=S(512),h=S(512),NT=3,n1=facFbm(31,8,4),n2=facFbm(32,32,2),gr=facFbm(33,4,4),R=facRng(34),tv=[];for(let i=0;i<NT*NT;i++)tv.push([(R()-.5)*16,R()]);
+    const hs=(x,y)=>{let n=x*374761393+y*668265263;n=(n^(n>>>13))*1274126177;return((n^(n>>>16))>>>0)/4294967296;};
+    out.tile=facSurf(w,h,(u,v,px,py,o)=>{const tx=Math.floor(u*NT),ty=Math.floor(v*NT),fu=u*NT-tx,fv=v*NT-ty,t=tv[ty*NT+tx];
+      const e=Math.min(fu,1-fu,fv,1-fv)*w/NT,gw=1.5*sc;
+      let g=178+t[0]+(n1(u,v)-.5)*14+(n2(u,v)-.5)*7,s=.85,ht=0;
+      const sp=hs(px,py);if(sp<.06)g-=26*(1-sp/.06);else if(sp>.975)g+=16;
+      if(e<gw){g=70+(n2(u,v)-.5)*14;s=.16;ht=-1.3;}
+      else{const gm=Math.max(0,1-(e-gw)/(8*sc));g-=gm*24*(.5+gr(u,v));s-=gm*.3;ht=-gm*.25+(e<gw+1.2?-.45:0);
+        const big=gr(u,v);if(big>.63){g-=(big-.63)*70;s*=.82;}}
       o.r=g*.98;o.g=g;o.b=g*1.01;o.s=s;o.h=ht;},
-      (A,H,w,h)=>{for(let i=0;i<3;i++){const tx=(R()*4)|0,ty=(R()*4)|0;facCrack(A,H,w,h,(tx+.5)*w/4,(ty+.5)*h/4,22+R()*26,400+i,.78);}});}
+      (A,H,w,h)=>{for(let i=0;i<2;i++){const tx=(R()*NT)|0,ty=(R()*NT)|0;facCrack(A,H,w,h,(tx+.5)*w/NT,(ty+.5)*h/NT,26+R()*30,400+i,.8);}});}
   /* --- troweled concrete floor: 4 m, cut joints every 2 m, oil stains, worn paths, long cracks --- */
   {const w=S(512),h=S(512),n1=facFbm(41,4,5),n2=facFbm(42,32,2),stn=facFbm(43,3,5),R=facRng(44);
     out.concF=facSurf(w,h,(u,v,px,py,o)=>{let g=128+(n1(u,v)-.5)*34+(n2(u,v)-.5)*12,s=.42,ht=(n2(u,v)-.5)*.4;
@@ -145,7 +156,8 @@ function facAtlas(sz){
       x.fillStyle=R()<.3?'#2a2e32':'#1c1f22';x.fillRect(X+w*.08,yy,w*.84,uh);x.fillStyle='rgba(0,0,0,.6)';for(let k=0;k<10;k++)x.fillRect(X+w*.14+k*w*.045,yy+uh*.25,w*.02,uh*.5);
       x.fillStyle='#55595c';x.fillRect(X+w*.09,yy+uh*.3,w*.03,uh*.4);x.fillRect(X+w*.88,yy+uh*.3,w*.03,uh*.4);
       for(let k=0;k<3;k++){x.fillStyle=['#2a6a2a','#6a5a1a','#3a3a6a'][(i+k)%3];x.fillRect(X+w*.66+k*w*.06,yy+uh*.4,w*.03,uh*.25);}
-      if(R()<.3){x.fillStyle='#8a8a7a';x.fillRect(X+w*.5,yy+uh*.2,w*.12,uh*.6);}}
+      if(R()<.3){x.fillStyle='#8a8a7a';x.fillRect(X+w*.5,yy+uh*.2,w*.12,uh*.6);}
+      if(R()<.34){const c=['#b8ae90','#c8a020','#2a4a8a','#d8d8d0','#8a2a22'][(R()*5)|0];x.fillStyle=c;x.fillRect(X+w*.09,yy+1,w*.82,uh-2);x.fillStyle='rgba(0,0,0,.35)';x.fillRect(X+w*.12,yy+uh*.6,w*.3,uh*.18);x.fillStyle='rgba(255,255,255,.25)';x.fillRect(X+w*.09,yy+1,w*.82,1.5);if(R()<.5){x.fillStyle='#3aa84a';x.fillRect(X+w*.8,yy+uh*.3,w*.04,uh*.3);}}}
     L(X+2,Y+2,w-4,h-4,'#3a3e42',3);}
   {const [X,Y,w,h]=fill('rackS','#16181a',.2);x.fillStyle='rgba(0,0,0,.7)';for(let yy=Y+8;yy<Y+h-8;yy+=6)for(let xx=X+8;xx<X+w-8;xx+=6)x.fillRect(xx,yy,2,2);L(X+2,Y+2,w-4,h-4,'#2e3236',3);}
   {const [X,Y,w,h]=fill('locker','#5f7068',.25);x.fillStyle='rgba(0,0,0,.55)';for(let i=0;i<6;i++){x.fillRect(X+w*.25,Y+h*.06+i*h*.018,w*.5,h*.008);x.fillRect(X+w*.25,Y+h*.84+i*h*.018,w*.5,h*.008);}
@@ -180,6 +192,10 @@ function facAtlas(sz){
   {const [X,Y,w,h]=reg('signLift');x.fillStyle='#7a1a14';x.fillRect(X,Y,w,h);L(X+3,Y+3,w-6,h-6,'#e8e0d0',3);text('FREIGHT LIFT',X,Y,w,h,'#f4ece0','bold '+(U*.22|0)+'px sans-serif');rough(X,Y,w,h,.2);}
   for(const [n,s] of[['sign1','B1'],['sign2','1'],['sign3','2']]){const [X,Y,w,h]=reg(n);x.fillStyle='#808080';x.fillRect(X,Y,w,h);text(s,X,Y,w,h,'rgba(235,235,225,.9)','bold '+(U*.62|0)+'px sans-serif');}
   {const [X,Y,w,h]=reg('signExit');x.fillStyle='#0e5a2a';x.fillRect(X,Y,w,h);text('EXIT',X,Y,w,h,'#e8ffe8','bold '+(U*.32|0)+'px sans-serif');}
+  /* roll-up shutter: corrugated slats, a heavy bottom bar with a handle, rust running down */
+  {const [X,Y,w,h]=fill('shutter','#4c5550',.3);const n=22;for(let i=0;i<n;i++){const yy=Y+i*h/n;const g=x.createLinearGradient(0,yy,0,yy+h/n);g.addColorStop(0,'rgba(255,255,255,.2)');g.addColorStop(.4,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');x.fillStyle=g;x.fillRect(X,yy,w,h/n);}
+    x.fillStyle='#3e4440';x.fillRect(X,Y+h*.93,w,h*.07);x.fillStyle='#24282a';x.fillRect(X+w*.44,Y+h*.89,w*.12,h*.03);for(let i=0;i<14;i++){x.fillStyle='rgba(110,58,28,'+rr(.15,.4)+')';x.fillRect(X+rr(0,w),Y+rr(h*.2,h*.8),rr(1,3),rr(h*.05,h*.25));}
+    x.fillStyle='#2a2e2c';x.fillRect(X,Y,w*.03,h);x.fillRect(X+w*.97,Y,w*.03,h);grime(X,Y,w,h,.55);}
   {const [X,Y,w,h]=fill('fuse','#d8d2c0',.1);x.fillStyle='#9a9a9a';x.fillRect(X,Y,w,h*.18);x.fillRect(X,Y+h*.82,w,h*.18);x.fillStyle='#c84a1a';x.fillRect(X,Y+h*.45,w,h*.1);}
   {const [X,Y,w,h]=fill('battery','#2a2a2a',.1);x.fillStyle='#d8a020';x.fillRect(X,Y+h*.6,w,h*.4);text('9V',X,Y+h*.2,w,h*.3,'#ddd','bold '+(U*.2|0)+'px sans-serif');}
   {const [X,Y,w,h]=fill('house','#c8ccc8',.1);}
@@ -294,13 +310,17 @@ function facMeshes(W,M,scene){
 function facPost(){
   const gl2=renderer.capabilities.isWebGL2,o={minFilter:T.LinearFilter,magFilter:T.LinearFilter,format:T.RGBAFormat,depthBuffer:true,stencilBuffer:false};
   let rt;if(gl2&&T.WebGLMultisampleRenderTarget){rt=new T.WebGLMultisampleRenderTarget(4,4,o);rt.samples=4;}else rt=new T.WebGLRenderTarget(4,4,o);
-  const mat=new T.ShaderMaterial({uniforms:{tD:{value:rt.texture},uRes:{value:new T.Vector2(4,4)},uTime:{value:0},uCA:{value:.004},uGrain:{value:.06},uVig:{value:.55},uFear:{value:0},uHurt:{value:0},uFade:{value:1},uSat:{value:1}},
+  const mat=new T.ShaderMaterial({uniforms:{tD:{value:rt.texture},uRes:{value:new T.Vector2(4,4)},uTime:{value:0},uCA:{value:.004},uGrain:{value:.06},uVig:{value:.55},uFear:{value:0},uHurt:{value:0},uFade:{value:1},uSat:{value:1.1},uZone:{value:0}},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
-    fragmentShader:`uniform sampler2D tD;uniform vec2 uRes;uniform float uTime;uniform float uCA;uniform float uGrain;uniform float uVig;uniform float uFear;uniform float uHurt;uniform float uFade;uniform float uSat;varying vec2 vUv;
+    fragmentShader:`uniform sampler2D tD;uniform vec2 uRes;uniform float uTime;uniform float uCA;uniform float uGrain;uniform float uVig;uniform float uFear;uniform float uHurt;uniform float uFade;uniform float uSat;uniform float uZone;varying vec2 vUv;
 float hs(vec2 p){p=fract(p*vec2(0.1031,0.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
 void main(){vec2 c=vUv-0.5;float r2=dot(c,c);vec2 off=c*uCA*(0.4+2.2*r2);
   float R=texture2D(tD,vUv+off).r;vec3 G=texture2D(tD,vUv).rgb;float B=texture2D(tD,vUv-off).b;vec3 col=vec3(R,G.g,B);
-  float l=dot(col,vec3(0.299,0.587,0.114));col=mix(vec3(l),col,uSat);col+=vec3(-0.006,0.004,0.01)*(1.0-l);col=(col-0.5)*1.06+0.5;
+  /* 3.16 grade: a mild S-curve; in the concrete the darks sink to teal and lose their red, in the offices they lift warm */
+  col=mix(col,col*col*(3.0-2.0*col),0.22);
+  float l=dot(col,vec3(0.299,0.587,0.114)),lo=1.0-smoothstep(0.0,0.55,l);
+  col.r*=1.0-0.4*lo*(1.0-uZone);col.b*=1.0-0.35*lo*uZone;col+=mix(vec3(0.0,0.017,0.021),vec3(0.02,0.011,0.0),uZone)*lo;
+  col=mix(vec3(l),col,uSat);
   float e=smoothstep(0.06,0.5,r2);col*=1.0-uVig*e;col=mix(col,col*vec3(1.25,0.45,0.4),clamp(uFear*e*1.4+uHurt,0.0,1.0));
   float n=hs(vUv*uRes+fract(uTime*7.13)*vec2(913.7,371.3))-0.5;col+=n*uGrain*(0.55+0.9*(1.0-l));
   gl_FragColor=vec4(max(col,0.0)*uFade,1.0);}`,depthTest:false,depthWrite:false});
@@ -310,7 +330,7 @@ void main(){vec2 c=vUv-0.5;float r2=dot(c,c);vec2 off=c*uCA*(0.4+2.2*r2);
 }
 /* ---------- your hand and flashlight: drawn after the world, so it never sinks into a wall ---------- */
 function facHand(){
-  const g=new T.Group(),metal=new T.MeshPhongMaterial({color:0x3c4248,specular:0x8a9096,shininess:38}),dark=new T.MeshPhongMaterial({color:0x1c1f22,specular:0x333333,shininess:20}),
+  const g=new T.Group(),metal=new T.MeshPhongMaterial({color:0x5a140e,specular:0x4a3a38,shininess:30}),dark=new T.MeshPhongMaterial({color:0x1c1f22,specular:0x333333,shininess:20}),
     glove=new T.MeshPhongMaterial({color:0x232120,specular:0x161616,shininess:8}),sleeve=new T.MeshLambertMaterial({color:0x1d2629}),lens=new T.MeshBasicMaterial({color:0xfff4d8});
   const cyl=(r0,r1,h,m,z,seg)=>{const c=new T.Mesh(new T.CylinderGeometry(r0,r1,h,seg||16),m);c.rotation.x=Math.PI/2;c.position.z=z;g.add(c);return c;};
   /* the torch: a knurled body, a wider head with a bright rim, a rubber tail cap */
@@ -365,4 +385,21 @@ function facBeamCone(U){
     vertexShader:'varying vec3 vW;varying vec3 vN;varying float vZ;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vW=wp.xyz;vN=normalize(mat3(modelMatrix)*normal);vZ=-position.z;gl_Position=projectionMatrix*viewMatrix*wp;}',
     fragmentShader:'uniform vec3 uCam;uniform float uK;uniform float uLOn;varying vec3 vW;varying vec3 vN;varying float vZ;void main(){vec3 V=normalize(uCam-vW);float f=pow(abs(dot(vN,V)),2.0);float a=f*uK*uLOn*smoothstep(5.5,0.3,vZ)*smoothstep(0.0,0.6,vZ);gl_FragColor=vec4(vec3(1.0,0.95,0.84)*a,1.0);}'});
   const c=new T.Mesh(g,m);c.frustumCulled=false;c.renderOrder=5;return c;
+}
+/* 3.16: the glow round every working tube and lamp, like the bloom in the reference. One mesh of camera-facing quads,
+   pulled a little toward the camera so the ceiling does not cut it in half; walls in between still hide it. */
+function facGlows(W,U){
+  const P=[],Cn=[],Cl=[],I=[];let n=0;
+  for(const l of W.lights){if(l.dead||l.px==null)continue;const col=FLC[l.col]||FLC.cyan,red=l.col==='red',k=(l.dim||1)*(red?.75:l.col==='warm'?.62:.8),s=l.wallL?(red?.95:.8):1.25;
+    for(const [a,b] of[[-1,-1],[1,-1],[1,1],[-1,1]]){P.push(l.px,l.py-(l.wallL?0:.05),l.pz);Cn.push(a,b,s,red?1:0);Cl.push(col[0]*k,col[1]*k,col[2]*k);}
+    I.push(n,n+1,n+2,n,n+2,n+3);n+=4;}
+  if(!n)return null;
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('cn',new T.Float32BufferAttribute(Cn,4));g.setAttribute('col',new T.Float32BufferAttribute(Cl,3));g.setIndex(I);
+  const m=new T.ShaderMaterial({uniforms:Object.assign({},U,{uGK:{value:1}}),transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+    vertexShader:`attribute vec4 cn;attribute vec3 col;uniform float uPow;uniform float uEmg;uniform float uFogD;varying vec2 vC;varying vec3 vCol;
+      void main(){vec4 mv=viewMatrix*vec4(position,1.0);float d=-mv.z;float pull=min(0.55,d*0.4);mv.xyz*=(d-pull)/max(d,0.001);
+        float s=cn.z*(d-pull)/max(d,0.001);mv.xy+=cn.xy*s;vC=cn.xy;
+        float k=(cn.w>0.5?uEmg:uPow)*smoothstep(0.5,1.6,d)*exp(-d*d*uFogD*uFogD*0.8);vCol=col*k;gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`uniform float uGK;varying vec2 vC;varying vec3 vCol;void main(){float r=dot(vC,vC);float a=exp(-r*5.5)-0.0041;if(a<=0.0)discard;gl_FragColor=vec4(vCol*a*0.55*uGK,1.0);}`});
+  const mesh=new T.Mesh(g,m);mesh.frustumCulled=false;mesh.renderOrder=6;return mesh;
 }

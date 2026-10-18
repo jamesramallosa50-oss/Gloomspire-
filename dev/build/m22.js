@@ -75,12 +75,12 @@ function facPlan(){
 
   /* ================= LEVEL 0 (y=8): ADMINISTRATION ================= */
   room(0,6.5,2,22,4.5,'off',3,'Y1');
-  room(0,6.5,5,14,12,'off',3.2,'OFFICE 1');door(0,9,4.5,10,5,{style:'blue'});
+  room(0,6.5,5,14,12,'off',3.2,'OFFICE 1');door(0,9,4.5,10,5,{style:'green'});
   room(0,14.5,5,22,12,'off',3.2,'OFFICE 2');door(0,18,4.5,19,5,{style:'blue'});door(0,14,9,14.5,10,{style:'blue'});
   room(0,22.5,2,35.5,12,'srv',3.4,'SERVER');door(0,22,2.5,22.5,3.5,{style:'blue'});door(0,28,12,29,12.5,{style:'blue'});
   room(0,16.5,12.5,35.5,26,'gal',3.6,'GALLERY');hole(0,20,16,35.5,26);door(0,18,12,19,12.5,{style:'blue'});
-  room(0,6.5,12.5,16,19.5,'off',3.2,'BREAK');door(0,9,12,10,12.5,{style:'blue'});door(0,16,13.5,16.5,14.5,{style:'blue'});
-  room(0,6.5,20,16,26,'off',3.2,'ARCHIVE');door(0,10,19.5,11,20,{style:'blue'});door(0,16,23,16.5,24,{style:'blue'});
+  room(0,6.5,12.5,16,19.5,'off',3.2,'BREAK');door(0,9,12,10,12.5,{style:'green'});door(0,16,13.5,16.5,14.5,{style:'green'});
+  room(0,6.5,20,16,26,'off',3.2,'ARCHIVE');door(0,10,19.5,11,20,{style:'green'});door(0,16,23,16.5,24,{style:'blue'});
   room(0,36,2,38,28.5,'off',3,'Y2');door(0,35.5,6,36,7,{style:'blue'});door(0,35.5,13.5,36,14.5,{style:'blue'});
   room(0,6.5,26.5,38,28.5,'off',3,'Y4');door(0,10,26,11,26.5,{style:'blue'});
   /* the atrium: a metal stair from the hall floor up to the gallery, railings along the balcony with one broken gap */
@@ -114,7 +114,7 @@ function facPlan(){
   for(const z of[14,20])L(1,9,z,'z','cyan');
   L(1,11,7,'x','cyan',{dim:.8});L(1,16.5,8,'z','cyan');L(1,20.5,8,'z','cyan',{dead:1});
   L(1,26,7,'x','cyan');L(1,32,7,'x','cyan',{dead:1});L(1,26,10,'x','cyan');L(1,32,10,'x','cyan');
-  L(1,13,16,'z','cyan');L(1,13,22,'z','cyan',{dim:.6});
+  L(1,13,16,'z','red',{dim:2.4});L(1,13,22,'z','red',{dim:1.9});
   L(1,18.2,14.2,'x','cyan');L(1,18.2,22,'z','cyan');L(1,24,14.2,'x','cyan');L(1,30,14.2,'x','cyan',{dead:1});L(0,30,20.5,'x','cyan',{y:10.2,hang:1,dim:1.3});
   L(0,26,19,'x','warm',{y:10.9,hang:1});L(0,32,22,'x','warm',{y:10.9,hang:1,dim:.7});L(0,24,24,'x','cyan',{y:10.6,hang:1,dim:1.2});
   L(1,35.38,22.5,'z','cyan',{wall:1,y:6.6});L(1,28,25.88,'x','cyan',{wall:1,y:6.6});L(1,22,25.88,'x','cyan',{wall:1,y:6.6,dim:.8});
@@ -284,6 +284,8 @@ function facProps(W){
   for(let i=0;i<6;i++)rack(0,24.3+i*.62,8.6,2);for(let i=0;i<7;i++)rack(0,29.9+i*.62,8.6,2);
   desk(0,33.4,11.15,0,{chair:true});crtTop(32.75,Y(0)+.76,11.25,0,true);fuse(0,34,Y(0)+.78,11);bat(0,24,Y(0),11.3);crate(0,23.2,11.2,.8,0);
   cable(0,24,6.8,33,6.9);cable(0,28.5,9.4,28.5,11.9);cable(0,26,4.3,26.6,2.2);
+  /* roll-up metal shutters, pulled down for good */
+  panel(0,21.985,10.6,1,0,2.2,2.3,'shutter',.08);panel(0,31.1,12.515,2,0,2.2,2.3,'shutter',.08);
   /* gallery */
   desk(0,24.5,13.3,2);crate(0,33.9,13.4,.8,0);crate(0,34.7,13.3,.7,0);crate(0,17.5,20.5,.8,0);chair(0,22.5,14.8,1);papers(0,27,14.5,4,1);
   /* break room with the green mat */
@@ -326,9 +328,9 @@ function facFloorMat(k){return k===FK.frm?'metal':(k===FK.cro||k===FK.bsm||k===F
 function facCeilMat(k){return FPLA(k)?'ceilP':k===FK.frm?'paint':'wallC';}
 /* surface colour (multiplies the texture) and wetness (how strongly it reflects) by kind of space */
 const FTINT={
-  floor:{1:[.5,.68,.8,.62],2:[.66,.74,.76,.42],3:[.5,.58,.58,.95],4:[.86,.82,.68,.32],5:[.7,.7,.66,.28],6:[.86,.8,.66,.34],7:[.62,.72,.76,.5],8:[.52,.68,.76,.5],9:[.86,.8,.6,.3],10:[.6,.6,.62,.4],11:[.58,.6,.62,.62]},
+  floor:{1:[.46,.66,.8,.66],2:[.66,.74,.76,.42],3:[.5,.58,.58,.95],4:[.86,.82,.68,.32],5:[.7,.7,.66,.28],6:[.86,.8,.66,.34],7:[.62,.72,.76,.5],8:[.52,.68,.76,.5],9:[.86,.8,.6,.3],10:[.6,.6,.62,.4],11:[.58,.6,.62,.62]},
   wall:{1:[.74,.86,.86,.14],2:[.76,.84,.84,.1],3:[.6,.7,.68,.22],4:[1,1,1,.06],5:[.9,.88,.84,.05],6:[1,.98,.95,.06],7:[.72,.82,.84,.1],8:[.74,.84,.86,.12],9:[1,1,1,.06],10:[.34,.52,.56,.3],11:[.66,.68,.72,.12]},
-  ceil:{1:[.6,.68,.68,.04],2:[.62,.68,.68,.04],3:[.48,.54,.52,.06],4:[.96,.92,.84,.03],5:[.85,.82,.76,.03],6:[.96,.92,.84,.03],7:[.6,.68,.7,.04],8:[.6,.68,.7,.04],9:[.96,.92,.84,.03],10:[.34,.52,.56,.2],11:[.55,.56,.58,.04]}};
+  ceil:{1:[.6,.68,.68,.04],2:[.62,.68,.68,.04],3:[.48,.54,.52,.06],4:[.92,.92,.8,.03],5:[.84,.83,.74,.03],6:[.92,.92,.8,.03],7:[.6,.68,.7,.04],8:[.6,.68,.7,.04],9:[.92,.92,.8,.03],10:[.34,.52,.56,.2],11:[.55,.56,.58,.04]}};
 function facNoise3(x,y,z){/* smooth value noise for grime and puddles */
   const h=(i,j,k)=>{let n=i*374761393+j*668265263+k*1274126177;n=(n^(n>>>13))*1274126177;return((n^(n>>>16))>>>0)/4294967296;};
   const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),xf=x-xi,yf=y-yi,zf=z-zi,s=t=>t*t*(3-2*t),u=s(xf),v=s(yf),w=s(zf);
@@ -395,7 +397,7 @@ const FAT={crate:[0,0],card:[1,0],pallet:[2,0],rubble:[3,0],rust:[4,0],pipe:[5,0
   rackF:[0,2,1,2],rackS:[1,2,1,2],locker:[2,2,1,2],cab:[3,2,1,2],vend:[4,2,1,2],gen:[5,2],panel:[5,3],breaker:[6,2],liftP:[6,3],board:[7,2],binder:[7,3],
   paper:[0,4],cable:[1,4],mat:[2,4],cooler:[3,4],radio:[4,4],hazard:[5,4],vent:[6,4],scrawl:[7,4],
   signSrv:[0,5,2,1],signLift:[2,5,2,1],sign1:[4,5],sign2:[5,5],sign3:[6,5],signExit:[7,5],
-  fuse:[0,6],battery:[1,6],house:[2,6],tread:[3,6],scrawl2:[4,6],scrawl3:[5,6],arrow:[6,6],blood:[7,6]};
+  fuse:[0,6],battery:[1,6],house:[2,6],tread:[3,6],scrawl2:[4,6],scrawl3:[5,6],arrow:[6,6],blood:[7,6],shutter:[0,7]};
 function facReg(a){const r=FAT[a]||FAT.metalD,w=r[2]||1,h=r[3]||1,e=.004;return [r[0]/8+e,1-(r[1]+h)/8+e,(r[0]+w)/8-e,1-r[1]/8-e];}
 /* faces in a plane, minus the parts other boxes cover: used so stacked steps only draw their visible risers */
 function facRectSub(rs,c){const out=[];for(const r of rs){if(c[2]<=r[0]||c[0]>=r[2]||c[3]<=r[1]||c[1]>=r[3]){out.push(r);continue;}
@@ -439,7 +441,7 @@ function facGeomRails(W,B){
       W.boxes.push(b);facHashAdd(W.bh,b);}
   }
 }
-const FDS={teal:[.34,.62,.66],blue:[.3,.5,.72],grey:[.46,.5,.52],green:[.36,.52,.4]};
+const FDS={teal:[.34,.62,.66],blue:[.3,.5,.72],grey:[.46,.5,.52],green:[.4,.56,.4]};
 function facGeomFrames(W,B){
   for(const d of W.doors){const y=FCY[d.k],alongZ=(d.x1-d.x0)<(d.z1-d.z0),t=(FDS[d.style]||FDS.grey).map(v=>v*.62).concat([.4]);
     if(alongZ){for(const [xf,sg] of[[d.x0,-1],[d.x1,1]]){const xa=sg<0?xf-.035:xf,xb=sg<0?xf:xf+.035;
@@ -448,7 +450,9 @@ function facGeomFrames(W,B){
         facBox(B,d.x0-.075,y,za,d.x0+.005,y+2.38,zb,'paint',t,{skip:['ny']});facBox(B,d.x1-.005,y,za,d.x1+.075,y+2.38,zb,'paint',t,{skip:['ny']});facBox(B,d.x0-.075,y+2.3,za,d.x1+.075,y+2.38,zb,'paint',t,{skip:['ny']});}}
   }
 }
-const FLC={cyan:[.5,.94,1],warm:[1,.86,.6],red:[1,.1,.06]};
+const FLC={cyan:[.2,.8,1],warm:[1,.93,.8],red:[1,.1,.06]};
+/* 3.16: ambient light by zone: deep teal in the concrete, a warm glow in the offices (the reference's shadows are never black) */
+const FAMB={c:[.006,.07,.088],w:[.13,.095,.036]};
 /* the ceiling height above (x,z) on level k */
 function facCeilAt(W,x,z,k){const i=Math.floor(x/FC),j=Math.floor(z/FC),c=j*FNX+i,G=W.G,y=FCY[k]+1;for(let q=0;q<G.ic[c];q++){const a=G.iv[(c*FMI+q)*2],b=G.iv[(c*FMI+q)*2+1];if(y>=a-.01&&y<=b+.01)return b;}return FCY[k]+3;}
 function facGeomLights(W,B){
@@ -530,11 +534,11 @@ function facGeomAll(W){const B=facBuilder();facGeomWorld(W,B);facGeomBoxes(W,B);
    so they stay on when the power fails. ---------- */
 function facLightsPrep(W){
   const out=[];
-  for(const l of W.lights){if(l.dead||l.px==null)continue;const col=FLC[l.col]||FLC.cyan,I=(l.col==='red'?3.2:l.col==='warm'?2.7:2.9)*(l.dim||1);
+  for(const l of W.lights){if(l.dead||l.px==null)continue;const col=FLC[l.col]||FLC.cyan,I=(l.col==='red'?3.2:l.col==='warm'?4.5:3.2)*(l.dim||1);
     const S=[];if(l.wallL){S.push([l.px,l.py,l.pz]);}else{const ax=l.ax==='x';for(const t of[-.42,0,.42])S.push([l.px+(ax?t:0),l.py,l.pz+(ax?0:t)]);}
     const L={x:l.px,y:l.py,z:l.pz,S,col,I,red:l.col==='red',wall:!!l.wallL,nx:l.nx||0,nz:l.nz||0,d0:l.col==='red'?3.2:l.wallL?2:3,R:l.col==='red'?12:l.wallL?7:10};out.push(L);
     /* light bounced off the floor below a ceiling tube: a weak, wide upward glow */
-    if(!l.wallL){let fy=l.py-1;while(fy>l.py-4.5&&facAir(W,l.px,fy-.1,l.pz))fy-=.25;out.push({x:l.px,y:fy+.3,z:l.pz,S:[[l.px,fy+.3,l.pz]],col,I:I*.2,red:L.red,bounce:1,d0:3.6,R:8});}
+    if(!l.wallL){let fy=l.py-1;while(fy>l.py-4.5&&facAir(W,l.px,fy-.1,l.pz))fy-=.25;out.push({x:l.px,y:fy+.3,z:l.pz,S:[[l.px,fy+.3,l.pz]],col,I:I*.27,red:L.red,bounce:1,d0:3.6,R:8.5});}
   }
   const H=new Map();for(let i=0;i<out.length;i++){const L=out[i],r=L.R;for(let j=Math.floor((L.z-r)/4);j<=Math.floor((L.z+r)/4);j++)for(let k=Math.floor((L.x-r)/4);k<=Math.floor((L.x+r)/4);k++){const key=j*100+k;let a=H.get(key);if(!a)H.set(key,a=[]);a.push(i);}}
   W.BL=out;W.BLH=H;
@@ -554,13 +558,13 @@ function facBakeVert(W,px,py,pz,nx,ny,nz,sx,sy,sz,out,o){
     for(const d of FAO){const rx=tx*d[0]+nx*d[1]+bx_*d[2],ry=ty*d[0]+ny*d[1]+by_*d[2],rz=tz*d[0]+nz*d[1]+bz_*d[2];
       for(const r of[.28,.6]){const v=facVoxAt(W,sx+rx*r,sy+ry*r,sz+rz*r);if(v){occ+=r<.3?.09:.035;break;}}}}
   const ao=Math.max(.3,1-occ);
-  let r=(warm?.03:.016)*ao,g=(warm?.025:.026)*ao,b=(warm?.017:.03)*ao,er=0,eg=0,eb=0,lx=0,ly=0,lz=0,tot=0;
+  const AM=warm?FAMB.w:FAMB.c;let r=AM[0]*ao,g=AM[1]*ao,b=AM[2]*ao,er=0,eg=0,eb=0,lx=0,ly=0,lz=0,tot=0;
   const cand=W.BLH.get(Math.floor(pz/4)*100+Math.floor(px/4))||[];
   for(const li of cand){const L=W.BL[li];if(Math.abs(L.y-py)>6.5)continue;const ns=L.S.length;
     for(const S of L.S){const dx=S[0]-px,dy=S[1]-py,dz=S[2]-pz,d2=dx*dx+dy*dy+dz*dz;if(d2>L.R*L.R)continue;const d=Math.sqrt(d2)||1e-3,lxn=dx/d,lyn=dy/d,lzn=dz/d;
-      const ndl=nx*lxn+ny*lyn+nz*lzn;if(ndl<=0)continue;
+      let ndl=nx*lxn+ny*lyn+nz*lzn;if(ndl<=0)continue;
       /* how much the source sends this way: tubes shine down, the floor bounce shines up, wall lamps shine out */
-      let em;if(L.bounce)em=Math.max(0,-lyn)*.7+.3;else if(L.wall)em=Math.max(0,-(lxn*L.nx+lzn*L.nz))*.7+.3;else em=Math.pow(Math.max(0,lyn),.85)*.88+.12;
+      let em;if(L.bounce)em=Math.max(0,-lyn)*.7+.3;else if(L.wall)em=Math.max(0,-(lxn*L.nx+lzn*L.nz))*.7+.3;else{em=Math.pow(Math.max(0,lyn),.85)*.88+.12;if(ny<-.5){const dh=Math.hypot(dx,dz);if(dh<2.6){const w=1-dh/2.6;em=Math.max(em,w);ndl=Math.max(ndl,.8*w);}}}
       const fade=d>L.R*.65?1-(d-L.R*.65)/(L.R*.35):1,c=L.I*em*ndl*fade/(1+d2/(L.d0*L.d0))/ns;if(c<.003)continue;
       const vis=facMarch(W,sx,sy,sz,S[0],S[1],S[2]);if(vis<=0)continue;const v=c*vis*(.55+.45*ao);
       if(L.red){er+=L.col[0]*v;eg+=L.col[1]*v;eb+=L.col[2]*v;}else{r+=L.col[0]*v;g+=L.col[1]*v;b+=L.col[2]*v;}
