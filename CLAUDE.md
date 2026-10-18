@@ -33,6 +33,7 @@ Where things live:
 | `m19.js` + `patch22.py` | Sound: background pause, generative music (`mzTracks`), extra sound effects, ambience (`sndTick`) |
 | `m20.js` + `patch22.py` | Floor 51 King fixes (`bossArm`, `kingHeal`), final-elevator cutscene (`endCutStart`), Golden Meadow scenery (`meadowPlus`) |
 | `m21.js` + `patch23.py` | Game Modes cards (`gmModes`, `gmPics`). Horror (`horStart('run')`): endless corridor, traps, demon chase. Hide & Seek (`horStart('hide')`, `hsBuild`, `hsDemon`): maze dungeon, wardrobes, relics, hunting AI. Shared AI helpers `hzLos`, `hzPath`, `hzNav`. Assets in `assets/horror/` (demon.glb, gltf.js loader) |
+| `patch24.py` | Horror modes use the climb's input and settings: mouse, touch layout, gyro, controller (`hzLook`, `hzPad`, `hzSkin` in m21) |
 | `patchsw.py` | Service worker: `assets/` served cache-first from a cache that survives updates |
 
 ## Every update must

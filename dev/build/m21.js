@@ -282,6 +282,7 @@ function hzUI(){
    '#hzui .top{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:5px}'+
    '#hzdist{font-size:clamp(14px,3.4vh,24px);letter-spacing:3px;text-shadow:0 2px 0 #000}#hzbest{font-size:10px;color:#9a8a7a;letter-spacing:2px}'+
    '.hzbar{width:clamp(110px,22vw,190px);height:7px;background:#1a0c0c;border:1px solid #000}.hzbar i{display:block;height:100%;background:#c8242a}#hzsta i{background:#d8c890}'+
+   '#hud.hzmode>*:not(#touch){display:none!important}#hud.hzmode #touch{z-index:41}'+
    '#hzdark{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.75))}#hzgrain{position:absolute;inset:-60px;opacity:.1;animation:hzg .45s steps(4) infinite}@keyframes hzg{0%{transform:translate(0,0)}25%{transform:translate(-31px,17px)}50%{transform:translate(23px,-29px)}75%{transform:translate(-13px,-41px)}100%{transform:translate(37px,11px)}}'+
    '#hzvig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(120,0,0,.85));opacity:0}'+
    '#hzslit{position:absolute;inset:0;display:none;background:linear-gradient(90deg,#000 0,#000 34%,rgba(0,0,0,.25) 38%,rgba(0,0,0,.25) 46%,#000 49%,#000 51%,rgba(0,0,0,.25) 54%,rgba(0,0,0,.25) 62%,#000 66%,#000 100%)}#hzslit.on{display:block}'+
@@ -345,8 +346,12 @@ function hzTouch(u){
 }
 function hzInputOnce(){
   if(window.__hzIn)return;window.__hzIn=1;
-  addEventListener('mousemove',e=>{if(state!=='horror'||!HZ||HZ.paused||HZ.dead||document.pointerLockElement!==$('view'))return;if(Math.abs(e.movementX)>400||Math.abs(e.movementY)>400)return;
-    HZ.pl.yaw-=e.movementX*.0023*sens();HZ.pl.pitch=clamp(HZ.pl.pitch-e.movementY*.0023*sens(),-1.2,1.2);});
+  /* the climb's touch layout drives the horror modes: its buttons are relabelled and routed here */
+  document.addEventListener('pointerdown',e=>{if(state!=='horror'||!HZ)return;const b=e.target&&e.target.closest&&e.target.closest('#touch button');if(!b)return;const id=b.id;
+    if(id==='tfire'||id==='tfire2')return;e.preventDefault();e.stopPropagation();
+    if(id==='tpause'){hzPause(true);return;}if(!hzLook())return;const run=HZ.mode==='run',k=id.replace(/2$/,'');
+    if(k==='troll'){if(run)HZ.kSlide=1;else HZ.pl.crouch=!HZ.pl.crouch;}else if(k==='tjump')HZ.kJump=1;else if(k==='tskill')HZ.kWard=1;
+    else if(k==='tswap')HZ.kThrow=1;else if(k==='tloadout')HZ.kLan=1;else if(k==='tbag')HZ.kSen=1;else if(k==='ttalk')HZ.kAct=1;},true);
   addEventListener('keydown',e=>{if(state!=='horror'||!HZ||e.repeat)return;
     if(e.code==='Escape'||e.code==='KeyP'){if(!HZ.dead)hzPause(!HZ.paused);}
     if(e.code==='Space'){e.preventDefault();HZ.kJump=1;}
@@ -362,6 +367,28 @@ function hzPause(on){
   if(on){try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}}else if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
 }
 let HZM='run';
+function hzLook(){return state==='horror'&&!!HZ&&!HZ.paused&&!HZ.dead&&!HZ.loading&&!HZ.won;}
+function hzPad(b,hit,lx,ly){/* controller in the horror modes, using the player's own button bindings */
+  const H=HZ,run=H.mode==='run';
+  if(Math.hypot(lx,ly)<.3)padRun=false;else if(PBh(hit,'run'))padRun=!padRun;
+  if(PBh(hit,'jump'))H.kJump=1;if(PBh(hit,'slide')){if(run)H.kSlide=1;else H.pl.crouch=!H.pl.crouch;}
+  if(PBh(hit,'skill'))H.kWard=1;if(PBh(hit,'cast')||PBh(hit,'talk'))H.kAct=1;if(PBh(hit,'swap'))H.kThrow=1;
+  if(PBh(hit,'loadout'))H.kLan=1;if(PBh(hit,'next')||PBh(hit,'prev')||PBh(hit,'book'))H.kSen=1;if(PBh(hit,'pause'))hzPause(true);
+  H.padHold=PBb(b,'fire');
+}
+const HZSKIN={run:{show:{tfire:'SPRINT',tfire2:'SPRINT',troll:'SLIDE',troll2:'SLIDE',tjump:'JUMP',tjump2:'JUMP',tskill:'WARD',tskill2:'WARD'},hide:['tspells','tbag','tloadout','tswap','tswap2','ttalk','tchat','traise','trun','tscope']},
+  hide:{show:{tfire:'SPRINT',tfire2:'SPRINT',troll:'CROUCH',troll2:'CROUCH',tskill:'WARD',tskill2:'WARD',tswap:'THROW',tswap2:'THROW',tloadout:'LIGHT',tbag:'SENSE'},hide:['tspells','tjump','tjump2','tchat','traise','trun','tscope','ttalk']}};
+function hzSkin(on){/* relabel the player's own touch buttons for the horror mode, and put them back afterwards */
+  const t=$('touch');if(!t)return;
+  for(const el of t.querySelectorAll('button')){
+    if(on){if(el.dataset.hzL==null){el.dataset.hzL=el.innerHTML;el.dataset.hzH=el.hidden?'1':'0';}
+      const S=HZSKIN[HZ.mode],lab=S.show[el.id];if(lab!=null){el.textContent=lab;}if(S.hide.includes(el.id))el.hidden=true;}
+    else if(el.dataset.hzL!=null){el.innerHTML=el.dataset.hzL;el.hidden=el.dataset.hzH==='1';delete el.dataset.hzL;delete el.dataset.hzH;}}
+  const sp=$('tspells');if(sp)sp.style.visibility=on?'hidden':'';
+  const hud=$('hud');if(hud){hud.classList.toggle('hzmode',!!on);hud.hidden=!on;}
+  if(on){t.hidden=!isTouch;gameEl.classList.toggle('touchmode',!!isTouch);try{applyCtl();}catch(_){}for(const el of t.querySelectorAll('button'))if(HZSKIN[HZ.mode].hide.includes(el.id))el.hidden=true;}
+  else{t.hidden=true;try{resetTouch();}catch(_){}}
+}
 async function horStart(mode){
   if(HZ)return;
   HZM=mode||HZM||'run';
@@ -371,7 +398,7 @@ async function horStart(mode){
   HZ={posts:new Set(),mode:HZM,paused:true,dead:false,loading:true,tiles:new Map(),chunks:[],pathN:0,roomN:0,lastTrap:-9,gen:{i:0,j:-5,dir:'N',seg:3,room:0,next:'N'},t:0,dist:0,keys:0,noise:[],
     pl:{x:HZS/2,z:HZS/2+.5,y:0,vy:0,yaw:0,pitch:0,hp:100,sta:100,bob:0,hurtT:0,slow:0,crouch:false,ch:1.6,slideT:0,slideCd:0},mv:[0,0],mvId:null,lkId:null,dm:{x:0,z:0,spd:0,on:false,wait:3.5,face:0},hb:0,stepD:0,lantern:true,senseT:0,holy:HZM==='run'?1:0,stones:3,breath:100,adrT:0,darkT:0,rageT:0,silT:0,evT:40,mile:250};
   $('title').hidden=true;$('hud').hidden=true;$('touch').hidden=true;
-  const u=hzUI();u.querySelector('#hzt').classList.toggle('on',!!isTouch);u.querySelector('#hzt').classList.add(HZ.mode==='hide'?'mhide':'mrun');
+  const u=hzUI();u.querySelector('#hzt').classList.add(HZ.mode==='hide'?'mhide':'mrun');
   state='horror';MUS.want='silent';
   try{
     await hzLoadDemon(p=>{const b=$('hzlb');if(b)b.style.width=Math.round(p*100)+'%';});
@@ -379,7 +406,7 @@ async function horStart(mode){
   if(!HZ)return;
   hzBuild();
   const ld=$('hzload');if(ld)ld.remove();
-  HZ.loading=false;HZ.paused=false;
+  HZ.loading=false;HZ.paused=false;P.yaw=HZ.pl.yaw;P.pitch=0;P.as=null;padRun=false;try{resetTouch();}catch(_){}hzSkin(true);
   if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
   if(HZ.mode==='hide'){hzSay('HIDE',2.2);hzTip('Find 5 relics · it is listening',4);}else{hzSay('RUN',2.2);hzRoar(.6);}
 }
@@ -414,6 +441,7 @@ function hzQuit(again){
   if(H&&H.scene){for(const C of H.chunks)if(!C.dead)hzDropChunk(C);if(HZA&&HZA.root.parent)HZA.root.parent.remove(HZA.root);
     try{H.scene.traverse(o=>{if(o.geometry&&o.geometry!==H.box&&!(HZA&&o===HZA.mesh))o.geometry.dispose();});for(const k in H.mat){const m=H.mat[k];if(m.map)m.map.dispose();m.dispose();}H.box.dispose();H.spikeG.dispose();H.bladeG.dispose();H.potG.dispose();if(H.dm.mix)H.dm.mix.stopAllAction();}catch(_){}}
   hzAmbStop();try{for(const m of H.writ||[]){m.map.dispose();m.dispose();}}catch(_){}
+  try{hzSkin(false);}catch(_){}
   HZ=null;
   const u=$('hzui');if(u)u.remove();const st=$('hzst');if(st)st.remove();
   if(again){state='title';horStart(HZM);return;}
@@ -478,15 +506,21 @@ function hzAmb(dt){
 function hzChime(v){hzS(o=>{sfxT(o,1320,1320,1.2,'sine',.05*v);sfxT(o,1980,1980,1,'sine',.03*v,.15);});}
 /* ---------- the frame ---------- */
 function horTick(dt){
+  const H=HZ;if(!H)return;if(!H.loading){H.pl.yaw=P.yaw;H.pl.pitch=P.pitch;}
+  horTick0(dt);
+  if(HZ&&!HZ.loading){P.yaw=HZ.pl.yaw;P.pitch=HZ.pl.pitch;}
+}
+function horTick0(dt){
   const H=HZ;if(!H)return;
   /* render size: sharper than the climb, so the demon keeps its detail */
-  {const w=gameEl.clientWidth||innerWidth,h=gameEl.clientHeight||innerHeight,a=w/Math.max(1,h),RHh=Math.min(h*Math.min(2,devicePixelRatio||1),window.__hzRH||(H.lowRes?360:540))|0,RWh=Math.min(1280,Math.round(RHh*a));
+  {const w=gameEl.clientWidth||innerWidth,h=gameEl.clientHeight||innerHeight,a=w/Math.max(1,h),RHh=Math.min(h*Math.min(2,devicePixelRatio||1),window.__hzRH||Math.min(720,(H.lowRes?360:540)*clamp(qFactor(),.6,1.35)))|0,RWh=Math.min(1280,Math.round(RHh*a));
     const cv=renderer.domElement;if(cv.width!==RWh||cv.height!==RHh){renderer.setSize(RWh,RHh,false);cam.aspect=a;cam.updateProjectionMatrix();}}
   const pl=H.pl;
   pl.ch+=((pl.slideT>0?.72:pl.crouch&&!H.hidden?1.0:1.6)-pl.ch)*Math.min(1,dt*(pl.slideT>0?16:10));
   if(H.hidden){const c=H.hidden;cam.position.set(c.x+c.fx*.12,1.55,c.z+c.fz*.12);}
   else cam.position.set(pl.x,pl.ch+pl.y+Math.sin(pl.bob*1.6)*.05,pl.z);
   cam.rotation.set(pl.pitch,pl.yaw,0);
+  {/* field of view from the settings, with the same sprint and slide kick as the climb */const base=(pl.slideT>0?88:H.sprinting?80:74)+((meta.fov||74)-74)*(cam.aspect>1.6?.5:.8),tf=Math.min(base,cam.aspect>1.6?100:112);if(Math.abs(cam.fov-tf)>.05){cam.fov+=(tf-cam.fov)*Math.min(1,dt*10);cam.updateProjectionMatrix();}}
   if(H.loading||H.paused){if(H.lamp)H.lamp.position.copy(cam.position);if(H.drone&&AC)H.drone.out.gain.setTargetAtTime(.015,AC.currentTime,.3);return;}
   H.t+=dt;try{hzAmb(dt);}catch(_){}
   /* frame-rate guard: if the phone struggles for a few seconds, render fewer pixels (the model itself stays full detail) */
@@ -498,14 +532,14 @@ function horTick(dt){
   if(H.hidden){hsHiddenTick(dt);}
   else{
     /* move */
-    let fx=0,fz=0;
-    if(keys.KeyW||keys.ArrowUp)fz+=1;if(keys.KeyS||keys.ArrowDown)fz-=1;if(keys.KeyA)fx-=1;if(keys.KeyD)fx+=1;
-    if(keys.ArrowLeft)pl.yaw+=dt*2.2;if(keys.ArrowRight)pl.yaw-=dt*2.2;
-    if(H.mv[0]||H.mv[1]){fx+=H.mv[0];fz-=H.mv[1];}
+    let fz=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-touchMove.y-padMove.y,fx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+touchMove.x+padMove.x;
+    if(keys.ArrowLeft)pl.yaw+=dt*2.4*sens();if(keys.ArrowRight)pl.yaw-=dt*2.4*sens();
+    if(keys.PageUp)pl.pitch=clamp(pl.pitch+dt*1.6*sens(),-1.2,1.2);if(keys.PageDown)pl.pitch=clamp(pl.pitch-dt*1.6*sens(),-1.2,1.2);
     const ml=Math.hypot(fx,fz);if(ml>1){fx/=ml;fz/=ml;}
-    const wantRun=(keys.ShiftLeft||keys.ShiftRight||H.tRun)&&fz>.2;
+    const stf=-touchMove.y-padMove.y,holdBtn=firing||H.padHold;
+    const wantRun=(keys.ShiftLeft||keys.ShiftRight||padRun||holdBtn||(stf>.88&&Math.abs(touchMove.x+padMove.x)<.5))&&fz>.2;
     if(wantRun&&pl.crouch)pl.crouch=false;
-    const run=wantRun&&pl.sta>0&&!pl.tired;
+    const run=wantRun&&pl.sta>0&&!pl.tired;H.sprinting=run;
     if(run)pl.sta=Math.max(0,pl.sta-dt*(hide?16:12));else pl.sta=Math.min(100,pl.sta+dt*(ml>.1?15:24));
     if(pl.sta<=0)pl.tired=true;if(pl.tired&&pl.sta>30)pl.tired=false;
     if(H.adrT>0){H.adrT-=dt;pl.sta=100;pl.tired=false;}
@@ -584,7 +618,7 @@ function hzWard(){/* throw holy water (Horror) or raise a holy candle (Hide & Se
   const H=HZ,dm=H.dm,pl=H.pl,hide=H.mode==='hide',n=hide?H.candles||0:H.holy;
   if(n<=0){hzTip(hide?'No holy candle. Find one first.':'No holy water.',1.6);return;}
   if(hide)H.candles--;else H.holy--;
-  const f=$('hzflash');f.style.background='#cfe8ff';f.style.opacity=.5;setTimeout(()=>{if(f){f.style.opacity=0;setTimeout(()=>{if(f)f.style.background='#a00';},260);}},120);
+  const f=$('hzflash');f.style.background='#cfe8ff';if(meta.flash!==false)f.style.opacity=.5;setTimeout(()=>{if(f){f.style.opacity=0;setTimeout(()=>{if(f)f.style.background='#a00';},260);}},120);
   hzS(o=>{sfxT(o,1320,1320,1.2,'sine',.08);sfxT(o,1980,1980,1,'sine',.05,.05);sfxN(o,.8,.12,5000,'highpass');});
   const d=Math.hypot(dm.x-pl.x,dm.z-pl.z);
   if(d<(hide?7:9.5)&&hzLos(pl.x,pl.z,dm.x,dm.z)){dm.stunT=hide?4.5:3.5;hzRoar(1.1);hzSay('IT RECOILS',1.4);if(dm.ai){dm.ai.alert=0;dm.ai.st='stun';}}
@@ -599,7 +633,7 @@ function hzEvents(dt){/* Horror run: every so often the dungeon itself turns on 
   else if(e==='rage'){H.rageT=7;hzSay('IT IS ENRAGED',1.6);hzRoar(1.2);}
   else{H.silT=9;hzSay('SILENCE',1.6);}
 }
-function hzHurt(n){const H=HZ;H.pl.hp-=n;H.pl.slow=.7;const f=$('hzflash');f.style.opacity=.55;setTimeout(()=>{if(f)f.style.opacity=0;},140);try{SFX.hurt&&SFX.hurt();}catch(_){}try{vib&&vib([40]);}catch(_){}}
+function hzHurt(n){const H=HZ;H.pl.hp-=n;H.pl.slow=.7;const f=$('hzflash');if(meta.flash!==false)f.style.opacity=.55;setTimeout(()=>{if(f)f.style.opacity=0;},140);try{SFX.hurt&&SFX.hurt();}catch(_){}try{vib&&vib([40]);}catch(_){}}
 /* the demon's body: face where it is going, blend idle and run, footsteps, heartbeat */
 function hzBody(dt,spd,moving){
   const H=HZ,dm=H.dm,pl=H.pl,dist=Math.hypot(dm.x-pl.x,dm.z-pl.z);
@@ -637,7 +671,7 @@ function hzDie(why){
   const H=HZ;if(H.dead)return;H.dead=true;H.deadT=0;H.why=why;
   try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}
   if(H.hidden){const c=H.hidden;H.hidden=null;$('hzslit').classList.remove('on');H.pl.x=c.x+c.fx*.9;H.pl.z=c.z+c.fz*.9;}
-  if(why==='demon'){hzScream();const f=$('hzflash');f.style.opacity=.7;setTimeout(()=>{if(f)f.style.opacity=0;},300);}
+  if(why==='demon'){hzScream();const f=$('hzflash');if(meta.flash!==false)f.style.opacity=.7;setTimeout(()=>{if(f)f.style.opacity=0;},300);}
   else if(why==='pit'){H.pl.vy=0;hzS(o=>{sfxT(o,600,90,1.6,'sawtooth',.06);sfxN(o,1.5,.15,800);});}
   else{try{SFX.hurt&&SFX.hurt();}catch(_){}}
   if(H.mode==='hide'){H.result={txt:'Relics '+H.keys+' of 5 · '+hsClock(H.t)};return;}
@@ -800,12 +834,14 @@ function hsWorld(dt){
     if(k>=1){H.flying.splice(i,1);H.noise.push({x:f.x1,z:f.z1,r:20});const rel=Math.atan2(-(f.x1-pl.x),-(f.z1-pl.z))-pl.yaw,pan=clamp(-Math.sin(rel),-1,1),v=clamp(1-Math.hypot(f.x1-pl.x,f.z1-pl.z)/20,.25,1);
       sfxPan(o=>{for(let q=0;q<3;q++){sfxN(o,.06,.18*v,2200+q*400,'bandpass',q*.09,4);sfxT(o,900+q*200,500,.05,'square',.03*v,q*.09);}},pan);setTimeout(()=>{try{H.scene.remove(f.m);}catch(_){}},4000);}}
   /* hold your breath in a wardrobe: it hears you breathing if it is right outside; you can only hold it so long */
-  {const hold=!!(H.hidden&&(keys.Space||H.tBreath)&&!(H.gaspT>0));H.gaspT=Math.max(0,(H.gaspT||0)-dt);
+  {const hold=!!(H.hidden&&(keys.Space||H.tBreath||firing||H.padHold)&&!(H.gaspT>0));H.gaspT=Math.max(0,(H.gaspT||0)-dt);
     if(hold){H.breath=Math.max(0,H.breath-dt*20);if(H.breath<=0){H.gaspT=2.5;H.noise.push({x:pl.x,z:pl.z,r:7});hzS(o=>{sfxN(o,.5,.12,900,'bandpass',0,1.5);sfxN(o,.4,.08,600,'bandpass',.55,1.5);});hzTip('You gasp for air!',1.5);}}
     else H.breath=Math.min(100,H.breath+dt*14);H.holding=hold;
     const bb=$('hzbreath');if(bb){const show=!!H.hidden;if((bb.style.display==='block')!==show)bb.style.display=show?'block':'none';bb.firstChild.style.width=H.breath.toFixed(0)+'%';}
     const br=$('hzbr'),cr=$('hzcr');if(br&&br.hidden===!!H.hidden){br.hidden=!H.hidden;if(cr)cr.hidden=!!H.hidden;}
     if(H.hidden&&!isTouch&&Math.hypot(H.dm.x-pl.x,H.dm.z-pl.z)<8)hzTip('Hold SPACE to hold your breath · E to come out',0);}
+  {const tt=$('ttalk');if(tt&&isTouch){const show=!!(H.hidden||near);if(tt.hidden===show)tt.hidden=!show;const lb=H.hidden?'LEAVE':'HIDE';if(tt.textContent!==lb)tt.textContent=lb;}
+   for(const id of['tfire','tfire2']){const f=$(id);if(f){const lb=H.hidden?'BREATH':'SPRINT';if(f.textContent!==lb)f.textContent=lb;}}}
   const act=$('hzact');if(act){const show=!!(H.hidden||near);if(act.hidden===show)act.hidden=!show;const lab=H.hidden?'LEAVE':'HIDE';if(act.textContent!==lab)act.textContent=lab;}
   if(!isTouch)hzTip(H.hidden?'E · come out':near?'E · hide in the wardrobe':'',0);else if(H.hidden||near)hzTip('',0);
   if(H.kLan){H.lantern=!H.lantern;hzS(o=>sfxT(o,600,400,.05,'square',.03));const b=$('hzlan');if(b)b.classList.toggle('on',!H.lantern);}H.kLan=0;
