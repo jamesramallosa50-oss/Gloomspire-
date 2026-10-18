@@ -3869,7 +3869,7 @@ const BTHEME={
 };
 BTHEME.king=BTHEME.bell;
 function buildBossDecor(th){
-  const put=(x,z,fn,sc)=>{if(solidAt(x,z))return;for(const p of L.plats||[])if(x>p.x0-.7&&x<p.x1+.7&&z>p.z0-.7&&z<p.z1+.7)return;const w0=WH;try{WH=Math.min(WH,ceilAt(x,z))/(sc||1);}catch(e){}const M=prop(x,z,rnd(6.28),fn);WH=w0;if(sc)M.g.scale.setScalar(sc);};
+  const put=(x,z,fn,sc)=>{if(solidAt(x,z))return;for(const p of L.plats||[])if(x>p.x0-.7&&x<p.x1+.7&&z>p.z0-.7&&z<p.z1+.7)return;const w0=WH;try{WH=ceilAt(x,z)/(sc||1);}catch(e){}const M=prop(x,z,rnd(6.28),fn);WH=w0;if(sc)M.g.scale.setScalar(sc);};
   for(const r of L.rooms){if(r.idx===L.start)continue;const ar=r.idx===L.exit,cs=[[wx(r.x0)-.7,wx(r.y0)-.7],[wx(r.x1)+.7,wx(r.y0)-.7],[wx(r.x0)-.7,wx(r.y1)+.7],[wx(r.x1)+.7,wx(r.y1)+.7]].sort(()=>Math.random()-.5);
     WH=ar?HB:3;const n=ar?4:ri(1,3);for(let i=0;i<n;i++)put(cs[i][0],cs[i][1],ar?th.decor[i%2?1:0]:pick(th.decor),ar?1.25:1);
     if(ar){const cx=(wx(r.x0)+wx(r.x1))/2,cz=(wx(r.y0)+wx(r.y1))/2;bLight.position.set(cx,4.2,cz);bLight.distance=28;bLight.color.setHex(th.glow).lerp(new T.Color(0xffffff),.55);bLight.intensity=1.5;const rad=Math.min(wx(r.x1)-wx(r.x0),wx(r.y1)-wx(r.y0))/2+.9;
@@ -4516,6 +4516,9 @@ function buildLevel0(f){
     const f0=add(cyl(0,.085,.16,6),flameMat3,0,.2,.24),fl=add(cyl(0,.075,.32,6),flameMat,0,.3,.24),f2=add(cyl(0,.04,.2,5),flameMat2,0,.25,.24);
     const hl=new T.Mesh(SPHG,torchHalo);hl.position.set(0,.27,.24);hl.scale.setScalar(.36);grp.add(hl);lvl.add(grp);torches.push({x:s.lx,z:s.lz,g:grp,fl,fls:[fl,f2,f0],hl,sy:2.05,d:0,ph:rnd(10)});
   });
+  try{addChandeliers();}catch(e){}
+  try{dungeonDressing();}catch(e){console.warn('dressing',e);}
+  try{dungeonDressing2();}catch(e){console.warn('dressing2',e);}
   /* doors */
   L.doors.forEach(d=>{
     const m=new T.Mesh(doorGeo[d.type],doorMats[d.type]);m.position.set(wx(d.x),WALLH/2,wx(d.y));if(d.axis==='x')m.rotation.y=Math.PI/2;
@@ -5433,7 +5436,7 @@ function hurtEnemy(e,dmg,crit,dot,net){
   /* A King boss can never be damaged by an effect it owns; only outside/player damage can defeat it. */
   if(e&&e.kingSelfCast)return;
   /* King passive: the player-controlled King deals lethal damage to any enemy. The final King boss is unaffected because it is not the player character. */
-  if(!net&&CH.id==='king')dmg=1e9;
+  if(!net&&CH.id==='king')dmg*=e.boss?1.35:1.9;
   /* Last Gate + Mend ally blessing: lethal damage for blessed multiplayer allies. */
   if(!net&&P.oneShotAllyT>0)dmg=1e9;
   if(e.type==='lootgob'&&!e.dead){const gd=Math.round(rnd(3,7)*(1+.2*(P.floor-1)));P.gold+=gd;floatText(e.x,e.y+e.h+.8,e.z,'+'+gd+'g','coin');}
@@ -5798,6 +5801,7 @@ function updProjs(dt){
     if(TS||KING_TS){
       /* Global Stopped World: every projectile is frozen, no matter which character created it. */
       if(p.spd0==null){p.spd0=p.spd;p.life0=p.life-p.age;}
+      if(TS&&p.from==='p'){if(p.tsd==null)p.tsd=p.age<.06?1.6:0;if(p.tsd>0){const st=Math.min(p.tsd,(p.spd0||0)*dt);const nx=p.x+p.dx*st,nz=p.z+p.dz*st;if(solidAt(nx,nz))p.tsd=0;else{p.x=nx;p.y+=p.dy*st;p.z=nz;p.tsd-=st;}}if(p.m)p.m.visible=true;}
       p.spd=0;
       if(p.m)p.m.position.set(p.x,p.y,p.z);
       continue;
@@ -5847,9 +5851,9 @@ const spellPow=()=>{const w=curW(),foc=w?(1+.07*((w.lv||1)-1))*Math.sqrt(RAR[w.r
 const lookIn=d=>{if(d>.0015){P.lookT=.25;P.lookA=(P.lookA||0)+d;}};
 function assistCalc(){
   P.as=null;if(meta.aim===false||PVP.on){P.lock=null;return;}const a=aimDir(),ah=Math.hypot(a.x,a.z)||1,c=[];let cur=null;
-  for(const e of enemies){if(e.dead)continue;const vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz);if(hd>((P.ads||0)>.5||P.scoped?34:11)||hd<.9)continue;
+  for(const e of enemies){if(e.dead)continue;const vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz);if(hd>((P.ads||0)>.5||P.scoped?28:8)||hd<.9)continue;
     const vy=clamp(EY+a.y/ah*hd,e.y+e.h*.3,e.y+e.h*.85)-EY;let dy=Math.atan2(-vx,-vz)-P.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const dp=Math.atan2(vy,hd)-P.pitch;
-    if(Math.abs(dy)>(e===P.lock?1.25:.95)||Math.abs(dp)>.8)continue;const o={e,hd,ang:Math.hypot(dy,dp*.5),dyaw:dy,dpit:dp,v:[vx,vy,vz,Math.hypot(hd,vy)]};c.push(o);if(e===P.lock)cur=o;}
+    if(Math.abs(dy)>(e===P.lock?.6:.42)||Math.abs(dp)>.5)continue;const o={e,hd,ang:Math.hypot(dy,dp*.5),dyaw:dy,dpit:dp,v:[vx,vy,vz,Math.hypot(hd,vy)]};c.push(o);if(e===P.lock)cur=o;}
   if(cur&&!los(P.x,P.z,cur.e.x,cur.e.z))cur=null;
   if((P.lookA||0)>.07){cur=null;P.lock=null;P.pickC=true;}          /* you moved the view: let go, and take whatever you settle on */
   if(!cur){P.lock=null;
@@ -5857,9 +5861,9 @@ function assistCalc(){
       for(let i=0;i<c.length&&i<4;i++){if(P.pickC&&c[i].ang>.6)break;if(los(P.x,P.z,c[i].e.x,c[i].e.z)){cur=c[i];P.lock=cur.e;break;}}
       P.pickC=false;}}
   if(!(P.lookT>0))P.lookA=0;
-  if(cur){P.as=cur;cur.on=cur.ang<.2;cur.pull=!(P.lookT>0)&&cur.ang>.02;}
+  if(cur){P.as=cur;cur.on=cur.ang<.14;cur.pull=!(P.lookT>0)&&cur.ang>.02&&cur.ang<.32;}
 }
-function aimA(){const a=aimDir(),s_=P.as;if(s_&&s_.ang<.26&&!s_.e.dead){const e=s_.e,vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz),ah=Math.hypot(a.x,a.z)||1,vy=clamp(EY+a.y/ah*hd,e.y+e.h*.3,e.y+e.h*.85)-EY,l=Math.hypot(vx,vy,vz)||1,k=s_.ang<.14?.9:.75;a.set(a.x+(vx/l-a.x)*k,a.y+(vy/l-a.y)*k,a.z+(vz/l-a.z)*k).normalize();}return a;}
+function aimA(){const a=aimDir(),s_=P.as;if(s_&&s_.ang<.13&&!s_.e.dead){const e=s_.e,vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz),ah=Math.hypot(a.x,a.z)||1,vy=clamp(EY+a.y/ah*hd,e.y+e.h*.3,e.y+e.h*.85)-EY,l=Math.hypot(vx,vy,vz)||1,k=s_.ang<.07?.6:.4;a.set(a.x+(vx/l-a.x)*k,a.y+(vy/l-a.y)*k,a.z+(vz/l-a.z)*k).normalize();}return a;}
 const mkW=o=>Object.assign({r:0,lv:1,plus:0},o,{b:o.b.slice()});
 const curW=()=>P[P.hand]||P.gun||P.sword;
 const isW3=w=>w.b.length===3&&w.b.slice().sort().join()==='0,1,2';
@@ -5925,7 +5929,7 @@ function fireWeapon(){
     const off=pel?0:(i-(n-1)/2)*.045,ox=P.x+rx*.16+a.x*.3,oy=EY-.14+a.y*.3,oz=P.z+rz*.16+a.z*.3;
     let dx=a.x*30-rx*.16+rx*off*30+rnd(-sp,sp),dy=a.y*30+.14+rnd(-sp,sp)*.6,dz=a.z*30-rz*.16+rz*off*30+rnd(-sp,sp);const l=Math.hypot(dx,dy,dz);
     const crit=Math.random()<cc;
-    shootProj({kind:C.kind,from:'p',x:ox,y:oy,z:oz,dx:dx/l,dy:dy/l,dz:dz/l,spd:C.spd*(1+.25*AW('boost')),life:(pel?.45:1.6)*((P.ads||0)>.5||P.scopeFire?1.9:1),blast:S.blast||(shell&&i===0?2.6:0),col:shell&&i===0?0xffb030:null,dmg:base*((S.blast||pel)?1+.35*rk('twin'):(1+.35*rk('twin'))/(1+rk('twin')))*(shell&&i===0?(pel?pel*.7:2.5):1)*(crit?(S.ccm||2):1)*rnd(.9,1.1),crit,pierce:S.pierce+rk('pierce'),poison:S.poison?base:0,pvm,snp:w.c==='sniper'||w.c==='crossbow'||(C.slot==='gun'&&C.kind!=='pellet'&&C.kind!=='rocket'&&(V.cd||0)>=.7)});
+    shootProj({kind:C.kind,from:'p',x:ox,y:oy,z:oz,dx:dx/l,dy:dy/l,dz:dz/l,spd:C.spd*(1+.25*AW('boost')),life:(pel?.45:1.6)*((P.ads||0)>.5||P.scopeFire?1.9:1),blast:S.blast||(shell&&i===0?2.6:0),col:shell&&i===0?0xffb030:null,dmg:(PVP.on?1:.78)*base*((S.blast||pel)?1+.35*rk('twin'):(1+.35*rk('twin'))/(1+rk('twin')))*(shell&&i===0?(pel?pel*.7:2.5):1)*(crit?(S.ccm||2):1)*rnd(.9,1.1),crit,pierce:S.pierce+rk('pierce'),poison:S.poison?base:0,pvm,snp:w.c==='sniper'||w.c==='crossbow'||(C.slot==='gun'&&C.kind!=='pellet'&&C.kind!=='rocket'&&(V.cd||0)>=.7)});
   }
   try{fx2Fire(C,V,pel,a);}catch(e){}
   sfx(C.kind==='rocket'?'fire':C.kind==='slug'?'snipe':pel?'boom':C.kind==='bullet'?'rifle':'shoot');
@@ -11722,11 +11726,14 @@ function foeExtra(e,dt,d,dx,dz){
 }
 function animate(e,dt,moving){
   const M=e.M,g=e.g,ph=e.ph,melee=e.D.atk!=='ranged',ly=M.legAxis==='y';
-  if(moving)e.t+=dt*e.spd*2.6;
-  const s=moving?Math.sin(e.t):0,idle=Math.sin(time*2+ph);
-  let lean=moving?.12:0,roll=moving?Math.sin(e.t)*.08:Math.sin(time*1.1+ph)*.03,bob=moving?Math.abs(Math.cos(e.t))*.08:idle*.025,lunge=0;
-  M.legs.forEach((l,i)=>{l.rotation[M.legAxis]=(i%2?-s:s)*(ly?.7:.9)+(ly&&!moving?Math.sin(time*1.5+ph+i)*.08:0);});
-  M.arms.forEach((a,i)=>{a.rotation.x=a.userData.base+(i%2?s:-s)*.75+(moving?0:idle*.08);});
+  {const lx=e._ax==null?e.x:e._ax,lz=e._az==null?e.z:e._az,inst=dt>0?Math.min(14,Math.hypot(e.x-lx,e.z-lz)/dt):0;e._ax=e.x;e._az=e.z;e.vs=(e.vs||0)+((moving?inst:0)-(e.vs||0))*Math.min(1,dt*7);}
+  const esc=e.sc||1,vs=e.vs/esc,wk=clamp(vs/.8,0,1),rn=clamp((e.vs/Math.max(1.2,e.spd||2.5)-.75)/.2,0,1);
+  if(wk>.02)e.t+=dt*(2.4+vs*1.7);
+  const s=Math.sin(e.t)*wk,idle=Math.sin(time*2+ph),br=Math.sin(time*2.3+ph);e.gait=rn>.5?'run':wk>.3?'walk':'idle';
+  let lean=wk*(.05+.22*rn),roll=wk*Math.sin(e.t)*(.05+.04*rn)+(1-wk)*Math.sin(time*1.1+ph)*.035,bob=wk*Math.abs(Math.cos(e.t))*(.05+.12*rn)+(1-wk)*br*.022,lunge=0;
+  const la=ly?.5+.3*rn:.62+.5*rn;
+  M.legs.forEach((l,i)=>{l.rotation[M.legAxis]=(i%2?-s:s)*la+(ly?Math.sin(time*1.5+ph+i)*.06*(1-wk):0);});
+  M.arms.forEach((a,i)=>{a.rotation.x=a.userData.base+(i%2?s:-s)*(.4+.55*rn)-.6*rn*wk+(1-wk)*(idle*.08+(i%2?.04:-.04)*br);});
   if(e.slam>0){const p=1-e.slam/.95;lean=-.4*p;bob+=.12*p;M.arms.forEach(a=>a.rotation.x=-.3-2.6*p);}
   else if(e.wind>0){const p=1-e.wind/WIND;lean=-.32*p;lunge=-.2*p;bob+=.05*p;
     if(M.arms[0])M.arms[0].rotation.x=-.2-2.7*p;if(M.arms[1])M.arms[1].rotation.x=M.arms[1].userData.base-1.2*p;}
@@ -11739,6 +11746,7 @@ function animate(e,dt,moving){
   M.wings.forEach((w,i)=>w.rotation.z=(i?-1:1)*(.25+Math.sin(time*(e.D.atk==='breath'?5:e.boss?8:15)+ph)*.55));
   let sy=e.sc,sxz=e.sc;
   if(e.type==='slime'){const hop=moving?Math.abs(Math.sin(e.t*.5)):0,q=1+Math.sin(time*5+ph)*.1+hop*.25;bob=hop*.45;sy=e.sc*q;sxz=e.sc*(2-q);roll=0;lean*=.5;}
+  if(e.type!=='slime'){const bq=1+(1-(wk||0))*br*.018;sy*=bq;sxz/=Math.sqrt(bq);}
   g.scale.set(sxz,sy,sxz);
   const fx=Math.sin(e.face),fz=Math.cos(e.face);
   g.position.set(e.x+fx*lunge*e.sc,e.y+bob*e.sc,e.z+fz*lunge*e.sc);
@@ -11784,7 +11792,7 @@ function updE(e,dt){
       }else if(want===-1){mx=-dx/d;mz=-dz/d;}
       {const m=e.r+PR;if(d<m){const q=m-d;slide(e,-dx/d*q,-dz/d*q,e.r);}}
       if(e.slow>0)e.slow-=dt;
-      if(mx||mz){const sp=e.spd*dt*(e.slow>0?.45:1);if(!slide(e,mx*sp,mz*sp,e.r))mx=mz=0;}
+      if(mx||mz){const sp=e.spd*dt*(e.slow>0?.45:1)*(e.see||e.boss||e.ally?1:.62);if(!slide(e,mx*sp,mz*sp,e.r))mx=mz=0;}
       const ta=((want===1&&!e.see)||D.atk==='flee')&&(mx||mz)?Math.atan2(mx,mz):Math.atan2(dx,dz);let da=ta-e.face;da=Math.atan2(Math.sin(da),Math.cos(da));e.face+=da*Math.min(1,dt*9);
       /* attacks: every one has a visible wind-up before it can land */
       e.cd-=dt;e.cd2-=dt;
@@ -11916,9 +11924,9 @@ function updWorld(dt){
   /* torches & lights */
   for(const t of torches){t.d=Math.hypot(t.x-P.x,t.z-P.z);t.g.visible=t.d<38;if(t.g.visible){for(const f of t.fls||[t.fl]){f.scale.y=.75+Math.random()*.55;f.scale.x=f.scale.z=.85+Math.random()*.3;f.rotation.y+=dt*(2+Math.random()*6);}if(t.hl)t.hl.scale.setScalar(.33+Math.random()*.07);if(t.d<14&&Math.random()<(t.big?.5:.06))spark(t.x+rnd(-.15,.15),t.sy||2,t.z+rnd(-.15,.15),rnd(-.2,.2),rnd(.5,1.2),rnd(-.2,.2),.6,[1,.6,.15],-.05);}}
   torches.sort((a,b)=>a.d-b.d);
-  const cut=torches.length>tLN?torches[tLN].d:99;
-  for(let i=0;i<6;i++){const l=tLights[i],t=torches[i];if(!t){l.intensity=0;continue;}
-    l.position.set(t.x,1.9,t.z);l.intensity=(1.12+Math.sin(time*11+t.ph)*.12+Math.random()*.14)*clamp((cut-t.d)/3,0,1)*(L.dimT>0?.25+Math.random()*.2:1);}
+  const TLs=torches.some(q=>q.dim)?torches.filter(q=>!q.dim):torches,cut=TLs.length>tLN?TLs[tLN].d:99;
+  for(let i=0;i<6;i++){const l=tLights[i],t=TLs[i];if(!t){l.intensity=0;continue;}
+    l.position.set(t.x,t.chand?t.sy:1.9,t.z);l.intensity=(1.12+Math.sin(time*11+t.ph)*.12+Math.random()*.14)*clamp((cut-t.d)/3,0,1)*(L.dimT>0?.25+Math.random()*.2:1);}
   for(let i=timers.length-1;i>=0;i--){const t=timers[i];t.t-=dt;if(t.t<=0){timers.splice(i,1);t.fn();}}
   for(let i=clouds.length-1;i>=0;i--){const c=clouds[i];c.t-=dt;c.tick-=dt;
     if(c.well){for(let k=0;k<4;k++){const an=rnd(6.283),rr=rnd(1,c.rad);spark(c.x+Math.cos(an)*rr,rnd(.2,1.8),c.z+Math.sin(an)*rr,-Math.cos(an)*rr*2.2,0,-Math.sin(an)*rr*2.2,.4,[.55,.4,1],0);}
@@ -11963,7 +11971,7 @@ function updPlayer(dt){
   if(P.as){const e=P.as.e,b=Math.atan2(-(e.x-P.x),-(e.z-P.z));
     if(P.fe===e&&P.fb!=null){let db=b-P.fb;db=Math.atan2(Math.sin(db),Math.cos(db));if(Math.abs(db)<.25){const ap=db*(P.lookT>0?.5:.92);P.yaw+=ap;P.as.dyaw-=ap;P.as.ang=Math.hypot(P.as.dyaw,P.as.dpit*.5);P.as.on=P.as.ang<.2;}}
     P.fe=e;P.fb=b;}else P.fe=null;
-  if(P.as&&P.as.pull){const kk=Math.min(1,((firing||padFire)?3:2.2)*dt),cap=1.5*dt;P.yaw+=clamp(P.as.dyaw*kk,-cap,cap);P.pitch=clamp(P.pitch+clamp(P.as.dpit*kk,-cap,cap),-1.2,1.2);}
+  if(P.as&&P.as.pull){const kk=Math.min(1,((firing||padFire)?1.5:((P.ads||0)>.5?1.6:.7))*dt),cap=.75*dt;P.yaw+=clamp(P.as.dyaw*kk,-cap,cap);P.pitch=clamp(P.pitch+clamp(P.as.dpit*kk,-cap,cap),-1.2,1.2);}
   $('cross').classList.toggle('lock',!!(P.as&&P.as.on));
   const v=Math.hypot(P.vx,P.vz);P.bob+=v*dt*(run?.8:1);
   if(P.y<=0&&v>2&&!(P.slide>0)){P.stepD=(P.stepD||0)+v*dt;if(P.stepD>2.5){P.stepD=0;noise(.05,.045,380);}}
@@ -12326,7 +12334,7 @@ function fx2Cast(hex){
   crT=0;castRing.visible=true;crMat.color.setHex(hex);crCore.material.color.setHex(hex);castRing.position.set(-.26,-.22,-.6);
   ringFx(P.x,P.z,.3,1.7,hex,.35,.06);}
 /* ===== ROOM PUZZLES, GATE PICKER, VERSION CHECK ===== */
-const GSV='2.3';
+const GSV='2.6';
 /* ---------- Last Gate + Haste: pick any floor 1-51 from a scroll list, or jump to a teammate ---------- */
 function openGatePick(){
   let S=$('gatepick');
@@ -12643,6 +12651,181 @@ function kingFusion(e,n){const all=kingFuseList(),L0=n===2?all.two:all.three;if(
  setInterval(()=>{tapBtn('finalCreditsContinue');tapBtn('endingBack');try{document.body.classList.toggle('touchy',!!isTouch);}catch(_){}},400);
  addEventListener('keydown',ev=>{const S=document.getElementById('gatepick');if(S&&!S.hidden&&(ev.code==='Escape'||ev.code==='Backspace')){ev.preventDefault();ev.stopImmediatePropagation();closeGatePick(true);}},true);}
 
+/* ===== BUILD 2.4: chandeliers ===== */
+/* an iron chandelier: plate on the ceiling, a chain of links, two rings of iron, six candles. The iron is merged into one mesh; the flames flicker like torches and the nearest ones carry real light */
+function chandMerge(parts){const pos=[],nor=[],col=[],uv=[],v=new T.Vector3(),n=new T.Vector3(),nm=new T.Matrix3();
+  for(const [geom,hex,mtx] of parts){const g2=geom.index?geom.toNonIndexed():geom,P_=g2.attributes.position,N_=g2.attributes.normal,U_=g2.attributes.uv,c=new T.Color(hex);nm.getNormalMatrix(mtx);
+    for(let i=0;i<P_.count;i++){v.fromBufferAttribute(P_,i).applyMatrix4(mtx);pos.push(v.x,v.y,v.z);n.fromBufferAttribute(N_,i).applyMatrix3(nm).normalize();nor.push(n.x,n.y,n.z);col.push(c.r,c.g,c.b);if(U_)uv.push(U_.getX(i),U_.getY(i));else uv.push(0,0);}}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));return g;}
+function addChandelier(x,z){
+  const c=ceilAt(x,z),hy=Math.max(2.75,c>5?c-2.9:c-1.3),parts=[],IR=0x2e2c30,IR2=0x46424a,BR=0x8a6a2a,WAX=0xe8dcc0,m4=new T.Matrix4(),q=new T.Quaternion(),e3=new T.Euler(),one=new T.Vector3(1,1,1);
+  const put=(geom,hex,px,py,pz,rx,ry,rz)=>{e3.set(rx||0,ry||0,rz||0);q.setFromEuler(e3);parts.push([geom,hex,new T.Matrix4().compose(new T.Vector3(px,py,pz),q,one)]);};
+  put(cyl(.2,.2,.05,8),IR,0,c-.025,0);put(cyl(.06,.09,.12,6),IR2,0,c-.1,0);
+  const top=c-.16,bot=hy+.42;for(let y=top,k=0;y>bot;y-=.15,k++)put(geo(.035,.17,k%2?.07:.02),IR2,0,y-.075,0,0,k%2?1.5708:0,0);
+  put(cyl(.05,.05,.42,6),IR,0,hy+.21,0);put(cyl(.11,.05,.12,8),BR,0,hy+.02,0);put(ico(.09),BR,0,hy-.12,0);
+  for(const [r,y,n] of [[.78,hy,16],[.42,hy+.12,10]])for(let i=0;i<n;i++){const a=i/n*6.283,l=6.283*r/n*1.08;put(geo(l,.045,.05),IR,Math.cos(a)*r,y,Math.sin(a)*r,0,-(a+1.5708),0);}
+  const fls=[],grp=new T.Group();
+  for(let i=0;i<6;i++){const a=i/6*6.283+.26,cx=Math.cos(a)*.78,cz=Math.sin(a)*.78;put(geo(.78,.04,.04),IR2,Math.cos(a)*.39,hy+.02,Math.sin(a)*.39,0,-a,0);
+    put(cyl(.075,.05,.07,6),BR,cx,hy+.06,cz);put(cyl(.032,.032,.2,6),WAX,cx,hy+.19,cz);
+    const f1=new T.Mesh(cyl(0,.045,.13,5),flameMat),f2=new T.Mesh(cyl(0,.025,.09,4),flameMat2);f1.position.set(cx,hy+.36,cz);f2.position.set(cx,hy+.34,cz);grp.add(f1);grp.add(f2);fls.push(f1,f2);}
+  const m=new T.Mesh(chandMerge(parts),PROPMAT);grp.add(m);
+  const hl=new T.Mesh(SPHG,torchHalo);hl.position.set(0,hy+.3,0);hl.scale.setScalar(.42);grp.add(hl);
+  grp.position.set(x,0,z);lvl.add(grp);torches.push({x,z,g:grp,fl:fls[0],fls,hl:null,sy:hy+.3,d:0,ph:rnd(10),chand:true});}
+function addChandeliers(){
+  if(!L||!L.rooms||PVP.on)return;let n=0;const R=L.rooms.slice().sort(()=>Math.random()-.5);
+  for(const r of R){if(n>=5)break;if(r.idx===L.start)continue;const w=r.x1-r.x0+1,h=r.y1-r.y0+1;if(w*h<16||Math.random()>.7)continue;
+    const cx=(wx(r.x0)+wx(r.x1))/2,cz=(wx(r.y0)+wx(r.y1))/2;
+    for(const [ox,oz] of[[0,0],[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,-3]]){const x=cx+ox,z=cz+oz;if(x<wx(r.x0)||x>wx(r.x1)||z<wx(r.y0)||z>wx(r.y1))continue;if(solidAt(x,z)||solidAt(x+1,z)||solidAt(x-1,z)||solidAt(x,z+1)||solidAt(x,z-1))continue;
+      let bad=false;for(const p of L.plats||[])if(x>p.x0-1&&x<p.x1+1&&z>p.z0-1&&z<p.z1+1){bad=true;break;}if(bad)continue;
+      try{addChandelier(x,z);n++;}catch(e){}break;}}}
+
+/* ===== BUILD 2.5: dungeon dressing ===== */
+/* Every room (not the camp) gets set dressing against its walls: shackles, banners, bookshelves, tables with candles,
+   candle clusters, skull piles, rubble, cobwebs in the corners and the odd hanging cage. All the solid pieces of a floor
+   are merged into one mesh, the cobwebs into another, so it costs a couple of draw calls plus the candle flames. */
+const WEBMAT=new T.MeshBasicMaterial({color:0xd8d6cc,transparent:true,opacity:.32,side:T.DoubleSide,depthWrite:false});
+function dungeonDressing(){
+  if(!L||!L.rooms||PVP.on)return;const W=L.W,H=L.H,grid=L.grid,parts=[],webs=[],flames=[],fl=[];
+  const m4=new T.Matrix4(),q=new T.Quaternion(),e3=new T.Euler(),one=new T.Vector3(1,1,1),v3=new T.Vector3();
+  let F=null;/* current local frame: a matrix for the piece being built */
+  const add=(arr,geom,hex,x,y,z,rx,ry,rz)=>{e3.set(rx||0,ry||0,rz||0);q.setFromEuler(e3);const lm=new T.Matrix4().compose(v3.set(x,y,z),q,one);arr.push([geom,hex,new T.Matrix4().multiplyMatrices(F,lm)]);};
+  const B=(w,h,d,hex,x,y,z,rx,ry,rz)=>add(parts,geo(w,h,d),hex,x,y,z,rx,ry,rz),C=(rt,rb,h,hex,x,y,z,n,rx,rz)=>add(parts,cyl(rt,rb,h,n||6),hex,x,y,z,rx,0,rz);
+  const flame=(x,y,z)=>{const p=new T.Vector3(x,y,z).applyMatrix4(F);flames.push(p);};
+  const th=L.theme||{},tint=th.tint||0xffffff,IR=0x2e2c30,IR2=0x46424a,WD=0x5a3a1c,WD2=0x3e2814,STN=0x6a6660,STN2=0x55524c,BONE=0xd8d0b8,WAX=0xe8dcc0,CL=[0x6a1a1e,0x2a3a6a,0x2a5a32,0x5a2a6a][(P.floor*7)%4];
+  const used=[];const near=(x,z,r)=>used.some(u=>Math.hypot(u[0]-x,u[1]-z)<r);
+  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;return false;};
+  const open=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&grid[y*W+x]!==0;
+  /* pieces, built in a frame where the wall is behind (z=0) and +z points into the room */
+  const P_={
+    shackles(){for(const sx of[-.38,.38]){B(.18,.12,.05,IR2,sx,2.35,.03);for(let k=0,y=2.25;k<6;k++,y-=.15)B(.035,.15,k%2?.07:.025,IR,sx,y,.08,0,k%2?1.57:0,0);for(let i=0;i<6;i++){const a=i/6*6.283;B(.06,.03,.03,IR2,sx+Math.cos(a)*.07,1.33,.1+Math.sin(a)*.07,0,-a,0);}}
+      if(Math.random()<.5){C(.09,.09,.06,BONE,-.38,1.2,.12,6);B(.03,.3,.03,BONE,-.42,1.02,.12,0,0,.3);}},
+    banner(ceil){const top=Math.min(3.2,ceil-.35);B(1.05,.05,.05,IR,0,top,.1);for(const s of[-1,1])C(.04,.04,.08,0xb8902a,s*.55,top,.1,6,0,1.57);
+      B(.82,1.45,.025,CL,0,top-.78,.1);B(.84,.08,.03,0xb8902a,0,top-.12,.1);B(.26,.26,.012,0xd8b04a,0,top-.62,.115,0,0,.785);B(.12,.12,.015,CL,0,top-.62,.12,0,0,.785);
+      for(let i=0;i<4;i++){const l=.12+Math.random()*.22;B(.2,l,.025,CL,-.31+i*.205,top-1.5-l/2,.1);}},
+    shelf(){const BK=[0x6a1a1e,0x2a3a6a,0x2a5a32,0x7a5a2a,0x4a2a5a,0x8a7a5a];B(.07,2.05,.42,WD2,-.62,1.025,.21);B(.07,2.05,.42,WD2,.62,1.025,.21);B(1.24,2.0,.03,0x2a1a0e,0,1.0,.02);
+      for(const y of[.04,.62,1.2,1.78,2.04])B(1.3,.05,.42,WD,0,y,.21);
+      for(const y0 of[.065,.645,1.225,1.805].slice(0,3+(Math.random()<.5)))for(let x=-.56;x<.5;){const w=.05+Math.random()*.07,h=.3+Math.random()*.16;if(Math.random()<.15){x+=w+.05;continue;}const lean=x>.35&&Math.random()<.5?.25:0;B(w,h,.26+Math.random()*.06,BK[(Math.random()*BK.length)|0],x+w/2,y0+h/2,.22,0,0,-lean);x+=w+.008;}
+      if(Math.random()<.6){C(.07,.07,.08,BONE,.35,1.88,.2,6);B(.12,.1,.1,BONE,.35,1.97,.22);}},
+    table(){B(1.4,.07,.72,WD,0,.8,.5);for(const sx of[-.62,.62])for(const sz of[.2,.8])B(.08,.77,.08,WD2,sx,.385,sz);B(1.2,.06,.05,WD2,0,.25,.5);
+      C(.13,.13,.02,0xa8a8b0,-.3,.845,.55,10);C(.05,.06,.22,0x2a5a32,.15,.945,.35,6);C(.02,.02,.06,0x2a5a32,.15,1.08,.35,5);B(.28,.06,.2,0x6a1a1e,.42,.865,.6,0,.3,0);
+      for(const [x,z,h] of[[-.55,.35,.22],[.5,.32,.14]]){C(.05,.06,.04,0xb8902a,x,.855,z,8);C(.03,.03,h,WAX,x,.87+h/2,z,6);flame(x,.87+h+.08,z);}},
+    candles(){C(.32,.32,.02,WAX,0,.012,.35,10);const n=3+((Math.random()*3)|0);for(let i=0;i<n;i++){const a=i/n*6.283+Math.random(),r=.06+Math.random()*.16,x=Math.cos(a)*r,z=.35+Math.sin(a)*r*.7,h=.12+Math.random()*.35,rw=.035+Math.random()*.025;C(rw,rw+.01,h,WAX,x,h/2+.02,z,6);if(i<3)flame(x,h+.1,z);}},
+    skulls(){const n=3+((Math.random()*4)|0);for(let i=0;i<n;i++){const x=-.4+Math.random()*.8,z=.25+Math.random()*.4,y=i>3?.18:.09,ry=Math.random()*1.4-.7;B(.2,.17,.2,BONE,x,y,z,0,ry,0);
+        const fx=Math.sin(ry),fz=Math.cos(ry);for(const s of[-1,1])B(.05,.05,.02,0x1a1612,x+fx*.1+Math.cos(ry)*s*.05,y+.02,z+fz*.1-Math.sin(ry)*s*.05,0,ry,0);}
+      for(let i=0;i<4;i++)C(.025,.025,.4+Math.random()*.2,BONE,-.35+Math.random()*.7,.03,.3+Math.random()*.4,5,1.57,Math.random()*3);},
+    rubble(){const n=5+((Math.random()*5)|0);for(let i=0;i<n;i++){const s=.1+Math.random()*.28;B(s,s*(.6+Math.random()*.6),s*(.8+Math.random()*.5),Math.random()<.5?STN:STN2,-.6+Math.random()*1.2,s*.35,.2+Math.random()*.7,Math.random(),Math.random()*3,Math.random());}
+      B(.5,.4,.45,STN2,-.2,.2,.25,0,.3,0);B(.28,.9,.28,STN,.35,.45,.22,0,0,.2);},
+    cage(ceil){const by=Math.max(2.35,Math.min(ceil-1.6,3.4)),top=by+.95;for(let y=ceil-.05,k=0;y>top+.05;y-=.15,k++)B(.03,.16,k%2?.07:.02,IR2,0,y-.075,0,0,k%2?1.57:0,0);
+      C(.12,.06,.1,IR,0,top+.04,0,6);for(const y of[by,top])for(let i=0;i<12;i++){const a=i/12*6.283;B(.2,.035,.035,IR,Math.cos(a)*.36,y,Math.sin(a)*.36,0,-(a+1.57),0);}
+      for(let i=0;i<8;i++){const a=i/8*6.283;B(.03,.95,.03,IR2,Math.cos(a)*.36,by+.475,Math.sin(a)*.36);}B(.62,.04,.62,IR,0,by-.02,0);
+      B(.18,.15,.18,BONE,.05,by+.1,0,0,.4,0);C(.025,.025,.35,BONE,-.1,by+.04,.08,5,1.57,.6);},
+  };
+  const pieces=['shackles','banner','shelf','table','candles','skulls','rubble','candles','shackles','skulls'];
+  let cages=0;
+  for(const r of L.rooms){if(r.idx===L.start)continue;const area=(r.x1-r.x0+1)*(r.y1-r.y0+1),want=Math.max(2,Math.min(7,Math.round(area/9)));
+    /* wall-side spots: a room cell with a wall on one side */
+    const spots=[],corners=[];
+    for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++){if(!open(x,y))continue;const k=y*W+x;if(L.cover&&L.cover[k])continue;const ws=[];
+      for(const [dx,dy] of[[1,0],[-1,0],[0,1],[0,-1]])if(!open(x+dx,y+dy))ws.push([dx,dy]);
+      for(const [dx,dy] of ws)spots.push({x,y,dx,dy});if(ws.length===2&&ws[0][0]!==-ws[1][0])corners.push({x,y,ws});}
+    spots.sort(()=>Math.random()-.5);let n=0;
+    for(const s of spots){if(n>=want)break;const nx=-s.dx,nz=-s.dy,px=wx(s.x)+s.dx*1.5,pz=wx(s.y)+s.dy*1.5,cx=px+nx*.5,cz=pz+nz*.5;
+      if(near(cx,cz,2.2)||blockedBy(cx,cz,.9)||solidAt(cx,cz))continue;
+      const kind=pieces[(Math.random()*pieces.length)|0];if((kind==='shelf'||kind==='table')&&(blockedBy(cx,cz,1.3)))continue;
+      F=new T.Matrix4().compose(v3.set(px,0,pz),q.setFromEuler(e3.set(0,Math.atan2(nx,nz),0)),one);
+      try{P_[kind](ceilAt(cx,cz));}catch(e){}used.push([cx,cz]);(L.dress=L.dress||[]).push({kind,x:cx,z:cz,nx,nz});n++;}
+    /* a cobweb in some corners */
+    for(const c of corners){if(Math.random()>.45)continue;const ceil=ceilAt(wx(c.x),wx(c.y));const ax=c.ws[0][0]||c.ws[1][0],az=c.ws[0][1]||c.ws[1][1];
+      const ox=wx(c.x)+ax*1.48,oz=wx(c.y)+az*1.48,len=.9+Math.random()*.7,y0=Math.min(ceil,WALLH)-.02;F=new T.Matrix4().makeTranslation(ox,0,oz);
+      for(let i=0;i<5;i++){const t=i/4,dx=-ax*Math.cos(t*1.5708)*len,dz=-az*Math.sin(t*1.5708)*len,dy=-len*.55;const L2=Math.hypot(dx,dy,dz);
+        const mm=new T.Matrix4().lookAt(new T.Vector3(0,0,0),new T.Vector3(dx,dy,dz),new T.Vector3(0,1,0));const qq=new T.Quaternion().setFromRotationMatrix(mm);
+        webs.push([geo(.012,.012,L2),0,new T.Matrix4().compose(new T.Vector3(ox+dx/2,y0+dy/2,oz+dz/2),qq,one)]);}
+      for(const f of[.35,.65,.9]){let px_=null;for(let i=0;i<=8;i++){const t=i/8,p=new T.Vector3(ox-ax*Math.cos(t*1.5708)*len*f,y0-len*.55*f,oz-az*Math.sin(t*1.5708)*len*f);
+          if(px_){const d=p.clone().sub(px_),mm=new T.Matrix4().lookAt(new T.Vector3(0,0,0),d,new T.Vector3(0,1,0));webs.push([geo(.01,.01,d.length()),0,new T.Matrix4().compose(px_.clone().add(p).multiplyScalar(.5),new T.Quaternion().setFromRotationMatrix(mm),one)]);}px_=p;}}}
+    /* a hanging cage in a few big rooms, away from the walls */
+    if(cages<2&&area>=24&&Math.random()<.35){const x=wx(r.x0+1)+.8,z=wx(r.y1-1)-.8;if(!blockedBy(x,z,1)&&!near(x,z,2.5)&&!solidAt(x,z)&&!torches.some(t=>t.chand&&Math.hypot(t.x-x,t.z-z)<3)){F=new T.Matrix4().makeTranslation(x,0,z);try{P_.cage(ceilAt(x,z));cages++;used.push([x,z]);}catch(e){}}}
+  }
+  if(parts.length){const m=new T.Mesh(chandMerge(parts),PROPMAT);m.userData.own=1;lvl.add(m);}
+  if(webs.length){const m=new T.Mesh(chandMerge(webs),WEBMAT);m.userData.own=1;lvl.add(m);}
+  /* candle flames: merged a room's worth at a time (two draw calls), culled with distance like torches, never taking a torch light */
+  if(flames.length){const g1=cyl(0,.042,.13,5),g2=cyl(0,.024,.085,4),id=new T.Quaternion();for(let i=0;i<flames.length;i+=10){const fs=flames.slice(i,i+10),a1=[],a2=[];let sx=0,sz=0;
+      for(const p of fs){a1.push([g1,0,new T.Matrix4().compose(p,id,one)]);a2.push([g2,0,new T.Matrix4().compose(new T.Vector3(p.x,p.y-.015,p.z),id,one)]);sx+=p.x;sz+=p.z;}
+      const g=new T.Group();g.add(new T.Mesh(chandMerge(a1),flameMat));g.add(new T.Mesh(chandMerge(a2),flameMat2));lvl.add(g);torches.push({x:sx/fs.length,z:sz/fs.length,g,fl:null,fls:[],hl:null,sy:1,d:0,ph:rnd(10),dim:true});}}
+}
+
+/* ===== BUILD 2.6: more dungeon: beams, buttresses, wall furniture, floor details ===== */
+const DECMAT={water:new T.MeshBasicMaterial({color:0x0e1a22,transparent:true,opacity:.55,depthWrite:false}),
+  blood:new T.MeshBasicMaterial({color:0x3a0608,transparent:true,opacity:.6,depthWrite:false}),
+  moss:new T.MeshBasicMaterial({color:0x2a3a14,transparent:true,opacity:.55,depthWrite:false})};
+function dungeonDressing2(){
+  if(!L||!L.rooms||PVP.on)return;const W=L.W,H=L.H,grid=L.grid,parts=[],dec={water:[],blood:[],moss:[]},flames=[];
+  const q=new T.Quaternion(),e3=new T.Euler(),one=new T.Vector3(1,1,1),v3=new T.Vector3();let F=new T.Matrix4();
+  const add=(arr,geom,hex,x,y,z,rx,ry,rz)=>{e3.set(rx||0,ry||0,rz||0);q.setFromEuler(e3);arr.push([geom,hex,new T.Matrix4().multiplyMatrices(F,new T.Matrix4().compose(v3.set(x,y,z),q,one))]);};
+  const B=(w,h,d,hex,x,y,z,rx,ry,rz)=>add(parts,geo(w,h,d),hex,x,y,z,rx,ry,rz),C=(rt,rb,h,hex,x,y,z,n,rx,rz)=>add(parts,cyl(rt,rb,h,n||6),hex,x,y,z,rx,0,rz);
+  const D=(k,w,d,x,z,ry)=>add(dec[k],geo(w,.004,d),0,x,.016+Math.random()*.004,z,0,ry||0,0);
+  const flame=(x,y,z)=>flames.push(new T.Vector3(x,y,z).applyMatrix4(F));
+  const rr=(a,b)=>a+Math.random()*(b-a),pick_=a=>a[(Math.random()*a.length)|0];
+  const IR=0x2e2c30,IR2=0x46424a,WD=0x5a3a1c,WD2=0x3e2814,WD3=0x4a2e16,STN=0x6a6660,STN2=0x55524c,STN3=0x48443e,BONE=0xd8d0b8,WAX=0xe8dcc0,SACK=0x8a7a5a,SACK2=0x6e6044;
+  const open=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&grid[y*W+x]!==0;
+  const prev=(L.dress||[]).map(d=>[d.x,d.z]),used=prev.slice();const near=(x,z,r)=>used.some(u=>Math.hypot(u[0]-x,u[1]-z)<r);
+  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(!t.dim&&Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;return false;};
+  /* wall furniture, built with the wall at z=0 and the room at +z */
+  const WP={
+    rack(){B(1.5,.07,.08,WD2,0,1.75,.08);B(1.5,.07,.08,WD2,0,.55,.08);for(const s of[-.7,.7])B(.08,1.7,.1,WD,s,.85,.08);
+      for(let i=0;i<4;i++){const x=-.5+i*.33,t=i%2;if(t){B(.03,1.7,.03,WD3,x,1.0,.18,0,0,.06);B(.06,.22,.02,0xa8acb4,x+.05,1.92,.18,0,0,.06);}else{B(.06,1.0,.015,0xb8bcc4,x,1.08,.17);B(.2,.04,.05,0x8a6a2a,x,.58,.17);B(.04,.16,.04,WD3,x,.47,.17);}}
+      B(.5,.5,.04,0x6a1a1e,.45,1.15,.2,0,0,0);B(.12,.12,.02,0xb8902a,.45,1.15,.225);},
+    sacks(){for(let i=0;i<4;i++){const x=rr(-.6,.6),z=rr(.3,.75),s=rr(.3,.42);B(s,s*.9,s*.75,i%2?SACK:SACK2,x,s*.45,z,0,rr(-.6,.6),rr(-.15,.15));B(s*.35,s*.25,s*.3,SACK2,x,s*.95,z);}
+      for(let i=0;i<2;i++){const x=rr(-.7,.7),z=rr(.35,.7);C(.27,.24,.8,0x5a3a1c,x,.4,z,10);C(.28,.28,.05,IR,x,.2,z,10);C(.28,.28,.05,IR,x,.62,z,10);C(.22,.22,.02,WD2,x,.81,z,10);}},
+    coffin(){const L2=2.0;B(.75,.5,L2,STN3,0,.25,.75,0,1.5708,0);B(.85,.12,L2+.12,STN2,0,.56,.75,0,1.5708,0);B(.5,.06,1.3,STN,0,.65,.75,0,1.5708,0);B(.28,.22,.18,STN,-.62,.75,.75);
+      for(const s of[-1,1])B(.12,.6,.12,STN2,s*1.05,.3,.75);C(.04,.04,.2,WAX,.85,.72,.75,6);flame(.85,.88,.75);},
+    niche(){B(1.2,1.1,.12,STN3,0,1.5,.06);B(1.3,.12,.3,STN2,0,.92,.15);B(1.3,.12,.3,STN2,0,2.08,.15);for(const s of[-1,1])B(.14,1.2,.3,STN2,s*.6,1.5,.15);B(.9,.06,.26,STN,0,1.5,.15);
+      for(const [x,y] of[[-.3,1.07],[0,1.07],[.3,1.07],[-.15,1.62],[.18,1.62]]){B(.2,.17,.18,BONE,x,y+.085,.18,0,rr(-.3,.3),0);B(.05,.04,.02,0x1a1612,x-.05,y+.1,.275);B(.05,.04,.02,0x1a1612,x+.05,y+.1,.275);}},
+    notice(){B(1.0,.7,.05,WD,0,1.6,.04);B(1.08,.06,.07,WD2,0,1.96,.05);B(1.08,.06,.07,WD2,0,1.24,.05);for(const [x,y,w,h] of[[-.25,1.65,.32,.42],[.15,1.55,.3,.36],[.32,1.75,.2,.22]]){B(w,h,.01,0xd8c8a0,x,y,.075,0,0,rr(-.12,.12));B(w*.7,.02,.012,0x3a2a1a,x,y+h*.25,.08);B(w*.6,.02,.012,0x3a2a1a,x,y,.08);B(.04,.04,.02,IR,x,y+h/2-.03,.085);}},
+    altar(){B(1.3,.85,.6,STN2,0,.425,.4);B(1.42,.08,.7,STN,0,.88,.4);B(.9,.04,.5,0x5a1a1e,0,.93,.4);B(.9,.3,.02,0x5a1a1e,0,.78,.66);
+      C(.1,.12,.2,0xb8902a,0,1.05,.35,8);C(.14,.1,.06,0xb8902a,0,1.18,.35,8);for(const s of[-.5,.5]){C(.04,.04,.3,WAX,s,1.1,.35,6);flame(s,1.33,.35);}B(.2,.17,.18,BONE,.28,1.0,.45,0,-.4,0);},
+    maiden(){B(.8,2.1,.6,IR,0,1.05,.32);B(.66,1.9,.04,IR2,0,1.08,.63);B(.3,.36,.06,IR2,0,1.85,.64);for(let i=0;i<5;i++)B(.04,.04,.12,0xa8acb4,-.15+i*.075,1.5-i*.1,.69);for(const s of[-1,1])B(.06,.12,.06,IR2,s*.38,1.4,.62);},
+    hooks(){B(1.4,.08,.08,IR2,0,2.6,.05);for(let i=0;i<4;i++){const x=-.5+i*.33,l=rr(.25,.8);for(let k=0,y=2.55;k<Math.round(l/.14);k++,y-=.14)B(.03,.15,k%2?.06:.02,IR,x,y-.07,.12,0,k%2?1.57:0,0);B(.03,.18,.03,IR2,x,2.5-l,.12);B(.12,.03,.03,IR2,x+.05,2.42-l,.12);}},
+  };
+  const kinds=['rack','sacks','sacks','coffin','niche','notice','altar','maiden','hooks','niche'];
+  for(const r of L.rooms){if(r.idx===L.start)continue;const area=(r.x1-r.x0+1)*(r.y1-r.y0+1);
+    const spots=[],corners=[];
+    for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++){if(!open(x,y))continue;if(L.cover&&L.cover[y*W+x])continue;const ws=[];for(const [dx,dy] of[[1,0],[-1,0],[0,1],[0,-1]])if(!open(x+dx,y+dy))ws.push([dx,dy]);
+      for(const [dx,dy] of ws)spots.push({x,y,dx,dy});if(ws.length===2&&ws[0][0]!==-ws[1][0])corners.push({x,y,ws});}
+    /* stone buttresses in the corners */
+    for(const c of corners){const ax=c.ws[0][0]||c.ws[1][0],az=c.ws[0][1]||c.ws[1][1],cx=wx(c.x)+ax*1.22,cz=wx(c.y)+az*1.22,h=Math.min(ceilAt(wx(c.x),wx(c.y)),HB);if(blockedBy(cx,cz,.3))continue;
+      F=new T.Matrix4();B(.56,h,.56,STN2,cx,h/2,cz);B(.7,.3,.7,STN3,cx,.15,cz);B(.68,.18,.68,STN3,cx,h-.09,cz);if(h>WALLH+.5)B(.66,.14,.66,STN3,cx,WALLH,cz);}
+    /* ceiling beams across the short side, with brackets at each end */
+    {const ceil=ceilAt((wx(r.x0)+wx(r.x1))/2,(wx(r.y0)+wx(r.y1))/2);if(ceil<=WALLH+.2&&area>=9){const alongX=(r.x1-r.x0)<(r.y1-r.y0);F=new T.Matrix4();
+      if(alongX){for(let y=r.y0+1;y<=r.y1-1;y+=2){const z=wx(y),x0=wx(r.x0)-1.5,x1=wx(r.x1)+1.5;B(x1-x0,.26,.3,WD3,(x0+x1)/2,ceil-.13,z);for(const x of[x0+.12,x1-.12]){B(.22,.5,.32,WD2,x,ceil-.5,z);B(.24,.1,.36,IR,x,ceil-.28,z);}}}
+      else{for(let x=r.x0+1;x<=r.x1-1;x+=2){const x_=wx(x),z0=wx(r.y0)-1.5,z1=wx(r.y1)+1.5;B(.3,.26,z1-z0,WD3,x_,ceil-.13,(z0+z1)/2);for(const z of[z0+.12,z1-.12]){B(.32,.5,.22,WD2,x_,ceil-.5,z);B(.36,.1,.24,IR,x_,ceil-.28,z);}}}}}
+    /* wall furniture */
+    spots.sort(()=>Math.random()-.5);let n=0;const want=Math.max(1,Math.min(4,Math.round(area/14)));
+    for(const s of spots){if(n>=want)break;const nx=-s.dx,nz=-s.dy,px=wx(s.x)+s.dx*1.5,pz=wx(s.y)+s.dy*1.5,cx=px+nx*.55,cz=pz+nz*.55;
+      if(near(cx,cz,2.2)||blockedBy(cx,cz,1.1)||solidAt(cx,cz))continue;const k=pick_(kinds);if(k==='coffin'&&(near(cx,cz,3)||blockedBy(cx,cz,1.5)))continue;
+      F=new T.Matrix4().compose(v3.set(px,0,pz),q.setFromEuler(e3.set(0,Math.atan2(nx,nz),0)),one);try{WP[k]();}catch(e){}used.push([cx,cz]);(L.dress=L.dress||[]).push({kind:k,x:cx,z:cz,nx,nz});n++;}
+    /* moss and damp on the walls, low down */
+    for(const s of spots){if(Math.random()>.18)continue;const nx=-s.dx,nz=-s.dy,px=wx(s.x)+s.dx*1.5,pz=wx(s.y)+s.dy*1.5;F=new T.Matrix4().compose(v3.set(px,0,pz),q.setFromEuler(e3.set(0,Math.atan2(nx,nz),0)),one);
+      const w=rr(.8,2),x=rr(-.6,.6);add(dec.moss,geo(w,rr(.3,.8),.004),0,x,rr(.15,.4),.022);add(dec.moss,geo(w*.5,rr(.4,1.1),.004),0,x+rr(-.3,.3),rr(.3,.7),.024);}
+    /* the floor: drains, puddles, old blood, straw, bone scraps, cracked slabs */
+    const cells=[];for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++)if(open(x,y)&&!(L.cover&&L.cover[y*W+x]))cells.push([x,y]);cells.sort(()=>Math.random()-.5);
+    const nf=Math.min(cells.length,Math.max(2,Math.round(area/5)));F=new T.Matrix4();
+    for(let i=0;i<nf;i++){const [cx_,cy_]=cells[i],x=wx(cx_)+rr(-1,1),z=wx(cy_)+rr(-1,1);if(blockedBy(x,z,.5))continue;const k=Math.random();
+      if(k<.14){B(.9,.03,.9,IR,x,.015,z);for(let j=-3;j<=3;j++)B(.05,.035,.8,0x1a1816,x+j*.11,.02,z);}
+      else if(k<.34){D('water',rr(.8,1.8),rr(.6,1.4),x,z,rr(0,3));D('water',rr(.4,.9),rr(.3,.7),x+rr(-.6,.6),z+rr(-.6,.6),rr(0,3));}
+      else if(k<.46){D('blood',rr(.5,1.2),rr(.4,.9),x,z,rr(0,3));for(let j=0;j<3;j++)D('blood',rr(.1,.25),rr(.1,.2),x+rr(-.9,.9),z+rr(-.9,.9),rr(0,3));}
+      else if(k<.62){for(let j=0;j<14;j++)B(rr(.25,.5),.012,.02,j%3?0xb89a4a:0x8a7a3a,x+rr(-.5,.5),.012,z+rr(-.5,.5),0,rr(0,3),0);}
+      else if(k<.76){for(let j=0;j<4;j++)C(.02,.02,rr(.2,.45),BONE,x+rr(-.4,.4),.025,z+rr(-.4,.4),5,1.5708,rr(0,3));if(Math.random()<.4)B(.17,.14,.17,BONE,x,.07,z,0,rr(0,3),0);}
+      else{for(let j=0;j<3;j++)B(rr(.4,1),.014,.03,0x1a1612,x+rr(-.3,.3),.012,z+rr(-.3,.3),0,rr(0,3),0);B(rr(.6,1),.05,rr(.5,.8),STN3,x,.025,z,0,rr(0,3),rr(-.03,.03));}}
+    /* chains hanging from the ceiling */
+    if(Math.random()<.5){const [cx_,cy_]=cells[nf]||cells[0]||[r.x0,r.y0],x=wx(cx_)+rr(-.8,.8),z=wx(cy_)+rr(-.8,.8),ceil=ceilAt(x,z);if(!blockedBy(x,z,.5)&&!torches.some(t=>t.chand&&Math.hypot(t.x-x,t.z-z)<2)){
+      F=new T.Matrix4();const n2=2+((Math.random()*2)|0);for(let c=0;c<n2;c++){const ox=x+rr(-.4,.4),oz=z+rr(-.4,.4),bot=Math.max(2.6,ceil-rr(.8,1.7));for(let k=0,y=ceil;y>bot;y-=.15,k++)B(.03,.16,k%2?.065:.02,IR,ox,y-.075,oz,0,k%2?1.57:0,0);B(.03,.2,.03,IR2,ox,bot-.1,oz);B(.14,.03,.03,IR2,ox+.06,bot-.2,oz);}}}
+  }
+  if(parts.length){const m=new T.Mesh(chandMerge(parts),PROPMAT);m.userData.own=1;lvl.add(m);}
+  for(const k in dec)if(dec[k].length){const m=new T.Mesh(chandMerge(dec[k]),DECMAT[k]);m.userData.own=1;m.renderOrder=1;lvl.add(m);}
+  if(flames.length){const g1=cyl(0,.042,.13,5),g2=cyl(0,.024,.085,4),id=new T.Quaternion(),a1=[],a2=[];for(const p of flames){a1.push([g1,0,new T.Matrix4().compose(p,id,one)]);a2.push([g2,0,new T.Matrix4().compose(new T.Vector3(p.x,p.y-.015,p.z),id,one)]);}
+    const g=new T.Group();g.add(new T.Mesh(chandMerge(a1),flameMat));g.add(new T.Mesh(chandMerge(a2),flameMat2));lvl.add(g);}
+}
+
 /* ===== DUNGEON PACK: boss rework, wave trials, rune plates, weapon summons ===== */
 /* ---------- shared HUD (inside #hud, so menus always cover it) ---------- */
 const D2={};
@@ -12927,7 +13110,7 @@ function buildCoverProps(){
  const it=(id,p,label,sub)=>'<button type="button"'+(id?' id="'+id+'"':'')+(p?' data-p="'+p+'"':'')+(id==='mmcont'?' hidden':'')+'>'+label+'<small>'+sub+'</small></button>';
  mm.innerHTML='<div id="mmfog"></div><div id="mmside"><nav id="mmnav">'+it('mmcont','','CONTINUE','')+it('','climb','NEW CLIMB','Choose who climbs and how hard')+it('','mp','MULTIPLAYER','Climb together or fight in the arena')+it('','opt','OPTIONS','Graphics, full screen, controller buttons')+it('','how','HOW TO PLAY','Controls, fusions and ultimates')+it('','cred','CREDITS','Who built the tower')+'</nav></div>'+
    '<div id="mmlogo"><svg viewBox="0 0 16 24" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="4" height="2" fill="#ff9426"/><rect x="5" y="2" width="6" height="4" fill="#3a3630"/><rect x="7" y="3" width="2" height="2" fill="#ffd24a"/><rect x="4" y="6" width="8" height="6" fill="#4a463e"/><rect x="7" y="8" width="2" height="2" fill="#ffb040"/><rect x="3" y="12" width="10" height="6" fill="#3e3a34"/><rect x="5" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="9" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="2" y="18" width="12" height="6" fill="#2e2a26"/><rect x="7" y="20" width="2" height="4" fill="#0a0806"/></svg><div><b>GLOOMSPIRE</b><i>EVERY FLOOR IS LOCKED</i></div></div>'+
-   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 2.3</div></div>';
+   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 2.6</div></div>';
  TI.appendChild(mm);
  const page=(id,title)=>{const d=document.createElement('div');d.className='mmpage';d.id='mmp-'+id;d.innerHTML='<div class="mmhead"><button type="button" class="mmback">◀ BACK</button><h2>'+title+'</h2></div>';TI.appendChild(d);return d;};
  const mv=(d,ids)=>{for(const id of ids){const e=typeof id==='string'?$(id):id;if(e)d.appendChild(e);}};

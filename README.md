@@ -94,3 +94,24 @@ Everyone in a multiplayer room needs this same version, because floor layouts ch
 - Removed overlapping faces that fought each other: crate corner posts and edge bars, crate braces, dais and step tops and trim, camp crates, rug layers and table planks.
 - Floating lamps: the two camp lanterns now hang on chains from the ceiling. The Crown's bell (floor 51) hangs on a full chain instead of floating under a short one. Guardian-floor hanging decor uses the real ceiling height.
 - Guardian-floor decor is never placed inside crates, fences, the dais or walls.
+
+## Build 2.4
+- The floor-51 bell hangs from the real ceiling (it used a fixed 3 m height before, so in tall rooms it floated).
+- Chandeliers: iron rings with six lit candles on a chain from the ceiling, in up to 5 larger rooms per floor. The nearest ones give real light.
+- Stopped World: your shots leave the barrel, travel about a metre and hang in the air, visible, until time resumes.
+- Gun damage in the climb is 22% lower. The King's crown no longer one-shots everything: ×1.9 damage to monsters, ×1.35 to bosses.
+- Aim assist: shorter reach from the hip (8 m, 28 m scoped), a narrower cone, a gentler pull, and shots only bend when you are almost on target.
+- Enemies have idle (breathing, weight shift), walk and run gaits based on how fast they really move. They walk while hunting you out of sight and run once they see you.
+
+## Build 2.5 — dungeon dressing
+- Every room except the camp gets 2–7 pieces against its walls, chosen at random: wall shackles with chains, tattered banners on rods, bookshelves full of books, tables with candles, a bottle, a plate and a tome, floor candle clusters on a wax pool, skull and bone piles, and fallen rubble with a broken column.
+- Cobwebs in about half the room corners, and iron cages with bones hanging in up to two big rooms per floor.
+- Nothing is placed in doorways, against torches, on crates, fences or the dais, or in the camp.
+- Cheap to draw: each floor's set dressing is one merged mesh, the cobwebs are another, and candle flames are merged per room (they never take a torch light). Roughly +12 draw calls per frame.
+
+## Build 2.6 — more dungeon
+- Stone buttresses fill the inside corners of every room, with a plinth and a capital, plus a middle band in tall rooms.
+- Wooden ceiling beams with iron-banded brackets cross normal-height rooms every two cells.
+- New wall pieces: weapon racks (swords, spears, a shield), sacks and barrels, stone sarcophagi with a candle, skull niches, notice boards with pinned parchments, altars with a chalice and candles, iron maidens, and meat hooks on chains.
+- Floors: iron drain grates, dark puddles, old blood stains, scattered straw, bone scraps and cracked slabs. Damp moss creeps up the walls. Some rooms have chains with hooks hanging from the ceiling.
+- Still cheap: one extra merged mesh for the pieces, three for the floor and wall decals (water, blood, moss) and two for the candle flames.
