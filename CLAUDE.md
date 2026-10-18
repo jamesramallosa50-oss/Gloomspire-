@@ -32,6 +32,8 @@ Where things live:
 | `m18.js` + `patch21.py` | Sealed/exit doors count living guardians directly, mark and unstick the survivors |
 | `m19.js` + `patch22.py` | Sound: background pause, generative music (`mzTracks`), extra sound effects, ambience (`sndTick`) |
 | `m20.js` + `patch22.py` | Floor 51 King fixes (`bossArm`, `kingHeal`), final-elevator cutscene (`endCutStart`), Golden Meadow scenery (`meadowPlus`) |
+| `m21.js` + `patch23.py` | Game Modes cards (`gmModes`, `gmPics`), Horror mode (`horStart`, `horTick`): endless corridor, traps, demon chase. Assets in `assets/horror/` (demon.glb, gltf.js loader) |
+| `patchsw.py` | Service worker: `assets/` served cache-first from a cache that survives updates |
 
 ## Every update must
 1. **Bump the version** everywhere it appears:
