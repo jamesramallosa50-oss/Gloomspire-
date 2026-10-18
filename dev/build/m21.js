@@ -366,6 +366,7 @@ async function horStart(mode){
   if(HZ)return;
   HZM=mode||HZM||'run';
   initAudio();try{if(AC&&AC.state==='suspended')AC.resume();}catch(_){}
+  try{hzLoadScare();}catch(_){}
   hzInputOnce();
   HZ={posts:new Set(),mode:HZM,paused:true,dead:false,loading:true,tiles:new Map(),chunks:[],pathN:0,roomN:0,lastTrap:-9,gen:{i:0,j:-5,dir:'N',seg:3,room:0,next:'N'},t:0,dist:0,keys:0,noise:[],
     pl:{x:HZS/2,z:HZS/2+.5,y:0,vy:0,yaw:0,pitch:0,hp:100,sta:100,bob:0,hurtT:0,slow:0,crouch:false,ch:1.6,slideT:0,slideCd:0},mv:[0,0],mvId:null,lkId:null,dm:{x:0,z:0,spd:0,on:false,wait:3.5,face:0},hb:0,stepD:0,lantern:true,senseT:0,holy:HZM==='run'?1:0,stones:3,breath:100,adrT:0,darkT:0,rageT:0,silT:0,evT:40,mile:250};
@@ -423,7 +424,13 @@ function hzS(fn){if(!AC||muted||!nbuf)return;try{fn(master);}catch(_){}}
 function hzRoar(v){hzS(o=>{sfxT(o,180,60,1.6,'sawtooth',.16*v);sfxT(o,120,45,1.8,'square',.08*v,.05);sfxN(o,1.6,.25*v,700,'bandpass',0,1.2);});}
 function hzThud(v){hzS(o=>{sfxT(o,90,38,.18,'sine',.32*v);sfxN(o,.12,.12*v,260);});}
 function hzSniff(v){hzS(o=>{for(let i=0;i<3;i++)sfxN(o,.12,.09*v,1800,'bandpass',i*.18,2);});}
-function hzScream(){/* the jumpscare: a shriek, a crash and a sub-bass hit, all at once */
+let HZJS=null;
+function hzLoadScare(){/* the jumpscare recording (assets/horror/jumpscare.mp3), loaded once when a horror mode starts */
+  if(HZJS||!AC)return;HZJS='loading';
+  fetch('assets/horror/jumpscare.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{HZJS=buf;}).catch(()=>{HZJS=null;});
+}
+function hzScream(){/* the jumpscare: the recorded scream if it has loaded, otherwise a synthesised shriek, crash and sub-bass hit */
+  if(HZJS&&HZJS.duration&&AC&&!muted){try{const src=AC.createBufferSource(),g=AC.createGain();src.buffer=HZJS;g.gain.value=1.3;src.connect(g);g.connect(master);src.start();return;}catch(_){}}
   hzS(o=>{const t=AC.currentTime,ws=AC.createWaveShaper();ws.curve=hzCurve();ws.connect(o);
     const g=AC.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.32,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+1.6);g.connect(ws);
     for(const [f0,f1,ty] of[[620,1900,'sawtooth'],[655,2050,'sawtooth'],[300,90,'square'],[1300,700,'sawtooth']]){const q=AC.createOscillator();q.type=ty;q.frequency.setValueAtTime(f0,t);q.frequency.exponentialRampToValueAtTime(f1,t+.35);q.frequency.exponentialRampToValueAtTime(f1*.5,t+1.5);

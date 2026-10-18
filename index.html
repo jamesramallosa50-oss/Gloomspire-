@@ -12346,7 +12346,7 @@ function fx2Cast(hex){
   crT=0;castRing.visible=true;crMat.color.setHex(hex);crCore.material.color.setHex(hex);castRing.position.set(-.26,-.22,-.6);
   ringFx(P.x,P.z,.3,1.7,hex,.35,.06);}
 /* ===== ROOM PUZZLES, GATE PICKER, VERSION CHECK ===== */
-const GSV='3.11';
+const GSV='3.12';
 /* ---------- Last Gate + Haste: pick any floor 1-51 from a scroll list, or jump to a teammate ---------- */
 function openGatePick(){
   let S=$('gatepick');
@@ -13777,6 +13777,7 @@ async function horStart(mode){
   if(HZ)return;
   HZM=mode||HZM||'run';
   initAudio();try{if(AC&&AC.state==='suspended')AC.resume();}catch(_){}
+  try{hzLoadScare();}catch(_){}
   hzInputOnce();
   HZ={posts:new Set(),mode:HZM,paused:true,dead:false,loading:true,tiles:new Map(),chunks:[],pathN:0,roomN:0,lastTrap:-9,gen:{i:0,j:-5,dir:'N',seg:3,room:0,next:'N'},t:0,dist:0,keys:0,noise:[],
     pl:{x:HZS/2,z:HZS/2+.5,y:0,vy:0,yaw:0,pitch:0,hp:100,sta:100,bob:0,hurtT:0,slow:0,crouch:false,ch:1.6,slideT:0,slideCd:0},mv:[0,0],mvId:null,lkId:null,dm:{x:0,z:0,spd:0,on:false,wait:3.5,face:0},hb:0,stepD:0,lantern:true,senseT:0,holy:HZM==='run'?1:0,stones:3,breath:100,adrT:0,darkT:0,rageT:0,silT:0,evT:40,mile:250};
@@ -13834,7 +13835,13 @@ function hzS(fn){if(!AC||muted||!nbuf)return;try{fn(master);}catch(_){}}
 function hzRoar(v){hzS(o=>{sfxT(o,180,60,1.6,'sawtooth',.16*v);sfxT(o,120,45,1.8,'square',.08*v,.05);sfxN(o,1.6,.25*v,700,'bandpass',0,1.2);});}
 function hzThud(v){hzS(o=>{sfxT(o,90,38,.18,'sine',.32*v);sfxN(o,.12,.12*v,260);});}
 function hzSniff(v){hzS(o=>{for(let i=0;i<3;i++)sfxN(o,.12,.09*v,1800,'bandpass',i*.18,2);});}
-function hzScream(){/* the jumpscare: a shriek, a crash and a sub-bass hit, all at once */
+let HZJS=null;
+function hzLoadScare(){/* the jumpscare recording (assets/horror/jumpscare.mp3), loaded once when a horror mode starts */
+  if(HZJS||!AC)return;HZJS='loading';
+  fetch('assets/horror/jumpscare.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{HZJS=buf;}).catch(()=>{HZJS=null;});
+}
+function hzScream(){/* the jumpscare: the recorded scream if it has loaded, otherwise a synthesised shriek, crash and sub-bass hit */
+  if(HZJS&&HZJS.duration&&AC&&!muted){try{const src=AC.createBufferSource(),g=AC.createGain();src.buffer=HZJS;g.gain.value=1.3;src.connect(g);g.connect(master);src.start();return;}catch(_){}}
   hzS(o=>{const t=AC.currentTime,ws=AC.createWaveShaper();ws.curve=hzCurve();ws.connect(o);
     const g=AC.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.32,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+1.6);g.connect(ws);
     for(const [f0,f1,ty] of[[620,1900,'sawtooth'],[655,2050,'sawtooth'],[300,90,'square'],[1300,700,'sawtooth']]){const q=AC.createOscillator();q.type=ty;q.frequency.setValueAtTime(f0,t);q.frequency.exponentialRampToValueAtTime(f1,t+.35);q.frequency.exponentialRampToValueAtTime(f1*.5,t+1.5);
@@ -14622,7 +14629,7 @@ function buildCoverProps(){
  const it=(id,p,label,sub)=>'<button type="button"'+(id?' id="'+id+'"':'')+(p?' data-p="'+p+'"':'')+(id==='mmcont'?' hidden':'')+'>'+label+'<small>'+sub+'</small></button>';
  mm.innerHTML='<div id="mmfog"></div><div id="mmside"><nav id="mmnav">'+it('mmcont','','CONTINUE','')+it('','modes','GAME MODES','Classic, Horror, Hide & Seek')+it('','climb','NEW CLIMB','Choose who climbs and how hard')+it('','mp','MULTIPLAYER','Climb together or fight in the arena')+it('','opt','OPTIONS','Graphics, full screen, controller buttons')+it('','how','HOW TO PLAY','Controls, fusions and ultimates')+it('','cred','CREDITS','Who built the tower')+'</nav></div>'+
    '<div id="mmlogo"><svg viewBox="0 0 16 24" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="4" height="2" fill="#ff9426"/><rect x="5" y="2" width="6" height="4" fill="#3a3630"/><rect x="7" y="3" width="2" height="2" fill="#ffd24a"/><rect x="4" y="6" width="8" height="6" fill="#4a463e"/><rect x="7" y="8" width="2" height="2" fill="#ffb040"/><rect x="3" y="12" width="10" height="6" fill="#3e3a34"/><rect x="5" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="9" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="2" y="18" width="12" height="6" fill="#2e2a26"/><rect x="7" y="20" width="2" height="4" fill="#0a0806"/></svg><div><b>GLOOMSPIRE</b><i>EVERY FLOOR IS LOCKED</i></div></div>'+
-   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 3.11</div><button type="button" id="mmlogb">▤ UPDATE LOG<i id="mmlogdot"></i></button></div>';
+   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 3.12</div><button type="button" id="mmlogb">▤ UPDATE LOG<i id="mmlogdot"></i></button></div>';
  TI.appendChild(mm);
  const page=(id,title)=>{const d=document.createElement('div');d.className='mmpage';d.id='mmp-'+id;d.innerHTML='<div class="mmhead"><button type="button" class="mmback">◀ BACK</button><h2>'+title+'</h2></div>';TI.appendChild(d);return d;};
  const mv=(d,ids)=>{for(const id of ids){const e=typeof id==='string'?$(id):id;if(e)d.appendChild(e);}};
@@ -14635,7 +14642,8 @@ function buildCoverProps(){
  {const G=gmModes();pG.insertAdjacentHTML('beforeend','<div id="gmgrid">'+G.map(m=>'<button type="button" class="gmcard" data-gm="'+m.id+'"><span class="gmpic" style="background-image:url('+m.pic+')"><em>'+m.tag+'</em></span><b>'+m.t+'</b><small>'+m.d+'</small></button>').join('')+'</div>');
   pG.querySelectorAll('.gmcard').forEach(b=>b.addEventListener('click',()=>{try{sfx('key');}catch(e){}const id=b.dataset.gm;if(id==='classic')go('climb');else if(id==='horror')horStart('run');else if(id==='hide')horStart('hide');}));}
  pK.insertAdjacentHTML('beforeend','<div id="mmcred"><p><b style="color:#ffd890">GLOOMSPIRE</b></p><p>A tower of stacked stone. Every floor is locked, every lift goes up, and every death drops you down the shaft.</p><p>Built in the browser with three.js. Music and sound are made live in Web Audio.</p><p>Thank you for climbing.</p></div>');
- {const LOGV='3.11',UL=[
+ {const LOGV='3.12',UL=[
+   ['3.12','18 Oct 2026',['New jumpscare sound: when the demon catches you in Horror or Hide & Seek you now hear a real recorded scream.']],
    ['3.11','18 Oct 2026',['Horror: you can SLIDE now (C, or the SLIDE button). Slide under swinging blades and under the new guillotines that slam down to waist height.','Horror: new cracked floors that collapse a moment after you step on them. Keep running, or jump the hole once it falls.','Horror: new pickups. Holy water stuns the demon when it is close (E or WARD), and adrenaline gives you 5 seconds of endless sprint. You start with one holy water.','Horror: the dungeon fights back. Every so often the LIGHTS GO OUT, the demon becomes ENRAGED, or everything goes SILENT. Traps get more frequent the further you run, and every 250 m you heal a little.','Hide & Seek: two of the seven relics are CURSED. Taking one screams for the demon. SENSE only ever points to the true ones.','Hide & Seek: taking a relic can bring a curse: the lights die, the demon learns where you are, or it gets faster for a while.','Hide & Seek: throw stones (G or THROW) to make a noise somewhere else and lead the demon away. Find more stones around the dungeon.','Hide & Seek: holy candles (R or WARD) stun the demon when it is close. Hold your breath in a wardrobe (hold Space, or the HOLD BREATH button): if it is right outside it can hear you breathe, and if it opens your wardrobe while you hold your breath it will not see you. Unless it watched you get in.']],
    ['3.10','18 Oct 2026',['Walls in Horror and Hide & Seek are now solid stone: the end of a wall shows a thick stone post instead of a paper-thin edge.','Scary music for both horror modes: a deep breathing drone, strings that swell out of nowhere, a broken music box far away, whispers, scraping metal and slams in the dark, and footsteps behind you that are not yours. When the demon hunts you, drums pound and strings shriek.','Jumpscare sounds: a screech when the demon spots you or comes into view close behind you, and a loud shriek and crash when it catches you.','Creepier look: film grain, darker edges, lights that flicker when the demon is near, and messages written in blood on the walls.']],
    ['3.9','18 Oct 2026',['Horror fixed: the way into the next part of the corridor is always open now. Before, every few turns there was a wall across the path that you had to walk through.','The demon in Horror is smarter and faster: it always takes the shortest way to where you are, never turns back to follow your old footsteps, and closes in quickly if it falls behind.','New mode: HIDE & SEEK. One huge dungeon with a great pillared hall and a maze of passages. Find 5 relics, then escape through the gate.','The demon hunts you by sight and sound: running is loud, walking is quieter, crouching is silent, and your light makes you easier to see. It remembers where it last saw you, guesses where you went, searches the rooms around and opens wardrobes. If it sees you climb into one, it will come for you. It learns your favourite hiding places and gets faster with every relic you take.','Hide in wardrobes and peek through the gap. Use SENSE to see the way to the nearest relic. The eye on the screen shows if the demon is calm, suspicious or hunting you.']],
