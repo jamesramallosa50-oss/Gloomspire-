@@ -59,6 +59,7 @@ function mzTracks(){
       padW:'triangle',pad:.014,padCut:1100,bass:0,bellP:0,melP:.85,lw:'square',lv:.03,la:.01,ld:1,lcut:2000,
       ost:['x.x.x.x.x.x.x.x.','x.xx.x.xx.x.x.x.','x..x..x.x..x..x.'],ostV:.07,
       drums:['k...s...k.k.s...','k..k..s.k...s..h','k.h.s.h.k.k.s.h.'],fill:'k.k.s.s.t.t.ssss'},
+    silent:{gen:1,bpm:60,root:38,sc:[0,2,3,5,7,8,10],mel:62,progs:[[[0,0]]],pad:0,bass:0,bellP:0,melP:0},
     horror:{gen:1,bpm:58,root:38,sc:[0,1,3,5,6,8,10],mel:74,
       progs:[[[0,0],[1,1],[0,0],[6,1]],[[0,0],[8,1],[1,1],[0,0]],[[0,0],[0,0],[1,1],[1,1]]],
       padW:'sawtooth',pad:.014,padCut:380,bass:.12,bellP:.35,melP:.35,lw:'sine',lv:.028,la:.3,ld:3},
