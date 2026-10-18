@@ -3431,24 +3431,25 @@ try{const s=JSON.parse(localStorage.getItem('gloomspire1'));if(s&&s.sk)meta=Obje
 
 /* Screenshot-matched touch layout. Coordinates are normalized so the same layout scales to any landscape screen. */
 const DEFAULT_TOUCH_LAYOUT={
-  tpause:{x:.029,y:.370,s:1},
-  tbag:{x:.077,y:.370,s:1},
-  troll:{x:.204,y:.423,s:1.9},
-  stick:{x:.115,y:.665,s:1},
-  tloadout:{x:.395,y:.70,s:.9},
-  tspells:{x:.545,y:.70,s:1},
-  tswap:{x:.838,y:.488,s:1.15},
-  tskill:{x:.900,y:.325,s:1.15},
-  tfire:{x:.885,y:.655,s:1.4},
-  ttalk:{x:.499,y:.730,s:.9},
-  tchat:{x:.90,y:.22,s:1.7}
+  tpause:{x:.029,y:.369,s:1},
+  tbag:{x:.084,y:.365,s:1},
+  troll:{x:.204,y:.422,s:1.9},
+  stick:{x:.114,y:.665,s:1},
+  tloadout:{x:.4585,y:.771,s:.7},
+  tspells:{x:.5925,y:.771,s:1},
+  tswap:{x:.826,y:.534,s:1.25},
+  tskill:{x:.935,y:.525,s:1.25},
+  tjump:{x:.7625,y:.693,s:1.4},
+  tfire:{x:.8825,y:.734,s:1.25},
+  ttalk:{x:.491,y:.598,s:1},
+  tchat:{x:.75,y:.404,s:1.7}
 };
 if(meta.touchLayoutVersion!==10){
   if(meta.touchLayoutVersion===9 && meta.ctl){meta.ctl.tskill=JSON.parse(JSON.stringify(DEFAULT_TOUCH_LAYOUT.tskill));}
   else {meta.ctl=JSON.parse(JSON.stringify(DEFAULT_TOUCH_LAYOUT));}
   meta.touchLayoutVersion=10;
 }
-if(meta.touchLayoutVersion===10){meta.ctl=meta.ctl||{};for(const k of['stick','tloadout','tspells','tfire'])meta.ctl[k]=JSON.parse(JSON.stringify(DEFAULT_TOUCH_LAYOUT[k]));meta.touchLayoutVersion=11;}
+if((meta.touchLayoutVersion||0)<12){meta.ctl=meta.ctl||{};for(const k in DEFAULT_TOUCH_LAYOUT)meta.ctl[k]=JSON.parse(JSON.stringify(DEFAULT_TOUCH_LAYOUT[k]));meta.touchLayoutVersion=12;}
 function applyKingDefaultLoadout(){
   if(meta.char!=='king')return;
   if(!Array.isArray(meta.bar))meta.bar=Array(9).fill(null);
@@ -3476,7 +3477,7 @@ let saveOk=true;const save=()=>{try{localStorage.setItem('gloomspire1',JSON.stri
 function saveRun(){if(!P.gun&&!P.sword)return;if(PVP.on)return;meta.run={diff:MP.on&&MP.diff!=null?MP.diff:meta.diff==null?1:meta.diff,char:CH.id,floor:P.floor,lvl:P.lvl,xp:P.xp,gold:P.gold,kills:P.kills,att:P.att,gun:P.gun,sword:P.sword,hand:P.hand,fell:P.fell,boon:P.boon||{},curse:P.curse||0};save();}
 function contLabel(){const R=meta.run,b=$('cont');b.hidden=!R;if(R){const c=CHARS.find(c=>c.id===R.char)||CHARS[0];b.textContent='Continue: '+c.n+' · floor '+R.floor+' · level '+R.lvl+(R.diff!=null&&R.diff!==1&&DIFF[R.diff]?' · '+DIFF[R.diff].n:'');}if(MP.on&&MP.mode==='pvp'){b.hidden=true;$('start').textContent='Enter the arena';$('start').classList.add('go');return;}$('start').textContent=R?'New climb':'Enter the tower';$('start').classList.toggle('go',!R);}
 const pvSp=()=>CH.all?['fireball','blink']:CH.spells;
-const rk=id=>PVP.on?(CH.id==='king'&&SK[id]&&!SK[id].pve&&(id!=='raise'||CH.raise)&&(!SK[id].uniq||SK[id].uniq==='king')?SK[id].max:SK[id]?Math.min(SK[id].max,(SK[id].k==='spell'?(pvSp().includes(id)?2:meta.sk[id]?1:0):0)+((PVP.gain&&PVP.gain[id])||0)):0):(id==='raise'&&!CH.raise?0:(meta.sk[id]||(CH.all&&SK[id]&&SK[id].k==='spell'?1:0)));
+const rk=id=>PVP.on?(CH.id==='king'&&SK[id]&&!SK[id].pve&&(id!=='raise'||CH.raise)&&(!SK[id].uniq||SK[id].uniq==='king')?SK[id].max:SK[id]?Math.min(SK[id].max,(SK[id].k==='spell'?(pvSp().includes(id)?2:0):0)+((PVP.gain&&PVP.gain[id])||0)):0):(id==='raise'&&!CH.raise?0:(meta.sk[id]||(CH.all&&SK[id]&&SK[id].k==='spell'?1:0)));
 const up=k=>PVP.on?0:(meta.up&&meta.up[k])||0,maxSta=()=>115+12*up('sta');
 
 /* ---------------- renderer & scenes ---------------- */
@@ -4373,39 +4374,52 @@ function genLevel(f){
   let vault=false;
   if(!boss&&f>=2&&Math.random()<.2){const c=rooms.filter(r=>r.idx!==start&&r.idx!==exit&&!r.onPath),c2=rooms.filter(r=>r.idx!==start&&r.idx!==exit);special=pick(c.length?c:c2).idx;vault=true;}
   const campChild=path[1],campDoor=doorOf[campChild];
-  /* room layouts: every fighting room gets a shape that matters. Stone blocks (cover) stop bullets and spells, can be climbed for height,
-     and monsters walk around them. Full-height walls make chokepoints. Each layout is undone if it would cut the room in two. */
-  const plats=[],cover=new Uint8Array(W*H);
-  const B=(a,b,c,d,h,y0)=>plats.push({x0:Math.min(a,c)*3,z0:Math.min(b,d)*3,x1:Math.max(a,c)*3,z1:Math.max(b,d)*3,y0:y0||0,y1:h});
-  const nearDoor=(x,y)=>{for(const o of[1,-1,W,-W]){const v=grid[y*W+x+o];if(v===2||v===3||v===4)return true;}return false;};
+  /* room layouts: every fighting room gets a shape that matters. Cover (crates, barricades, barrels) stops bullets and spells, can be climbed
+     for height, and monsters walk around it. Full-height walls make chokepoints. A layout is undone if it would cut the room in two,
+     if it crowds a doorway, or if it breaks the walk from the start of the floor to any door or to the exit. */
+  const cover=new Uint8Array(W*H);
+  const isDoorish=v=>v===2||v===3||v===4;
+  const nearDoor=(x,y)=>{for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){if(Math.abs(dx)+Math.abs(dy)>2)continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=W||yy>=H)continue;if(isDoorish(grid[yy*W+xx]))return true;}return false;};
+  for(const r of rooms){r._pl=[];r._ch=[];r._cv=[];}
   for(const r of rooms){
     if(r.idx===start||r.idx===special||(r.idx===exit&&boss))continue;
-    const w=r.x1-r.x0+1,h=r.y1-r.y0+1,pc=plats.length,ch=[],cv=[];
+    const w=r.x1-r.x0+1,h=r.y1-r.y0+1,PL=r._pl,ch=r._ch,cv=r._cv;
+    const B=(a,b,c,d,ht,y0,kind,ori)=>PL.push({x0:Math.min(a,c)*3,z0:Math.min(b,d)*3,x1:Math.max(a,c)*3,z1:Math.max(b,d)*3,y0:y0||0,y1:ht,kind:kind||null,ori:ori||null});
     const wall=(x,y)=>{if(x<r.x0||x>r.x1||y<r.y0||y>r.y1||grid[y*W+x]!==1||nearDoor(x,y))return;grid[y*W+x]=0;ch.push(y*W+x);};
-    const crate=(x,y,ht,sz,top)=>{if(x<r.x0+1||x>r.x1-1||y<r.y0+1||y>r.y1-1||grid[y*W+x]!==1||cover[y*W+x]||nearDoor(x,y))return false;const m=(1-(sz||.78))/2;B(x+m,y+m,x+1-m,y+1-m,ht);if(top)B(x+.28,y+.28,x+.72,y+.72,ht+.55,ht);cover[y*W+x]=1;cv.push(y*W+x);return true;};
+    const crate=(x,y,ht,sz,top,kind)=>{if(x<r.x0+1||x>r.x1-1||y<r.y0+1||y>r.y1-1||grid[y*W+x]!==1||cover[y*W+x]||nearDoor(x,y))return false;const m=(1-(sz||.78))/2;B(x+m,y+m,x+1-m,y+1-m,ht,0,kind||'crate');if(top)B(x+.26,y+.26,x+.74,y+.74,ht+.6,ht,'crate');cover[y*W+x]=1;cv.push(y*W+x);return true;};
+    const fence=(x,y,along)=>{if(x<r.x0+1||x>r.x1-1||y<r.y0+1||y>r.y1-1||grid[y*W+x]!==1||cover[y*W+x]||nearDoor(x,y))return false;
+      if(along)B(x+.32,y,x+.68,y+1,1.15,0,'fence','z');else B(x,y+.32,x+1,y+.68,1.15,0,'fence','x');cover[y*W+x]=1;cv.push(y*W+x);return true;};
     const ix0=r.x0+2,ix1=r.x1-2,iy0=r.y0+2,iy1=r.y1-2,cx=(r.x0+r.x1)>>1,cy=(r.y0+r.y1)>>1;
-    if(w<8||h<8){for(let i=0;i<ri(1,3);i++)crate(ri(ix0,ix1),ri(iy0,iy1),1.1,.7,Math.random()<.3);r.kind='small';continue;}
+    if(w<8||h<8){for(let i=0;i<ri(1,3);i++)crate(ri(ix0,ix1),ri(iy0,iy1),1.1,.7,Math.random()<.3,Math.random()<.4?'barrel':'crate');r.kind='small';}
+    else{
     const kind=pick(['pillars','barricade','dais','split','store','barricade','dais']);r.kind=kind;
-    if(kind==='pillars'){for(let x=ix0;x<=ix1;x+=3)for(let y=iy0;y<=iy1;y+=3)if(Math.random()<.8)wall(x,y);for(let i=0;i<3;i++)crate(ri(ix0,ix1),ri(iy0,iy1),1.1,.75);}
-    else if(kind==='barricade'){const along=w>=h;const n=along?w:h;for(const q of[.34,.66]){const line=along?Math.round(r.x0+(w-1)*q):Math.round(r.y0+(h-1)*q),a0=along?r.y0+1:r.x0+1,a1=along?r.y1-1:r.x1-1,mid=(a0+a1)>>1;
-        for(let a=a0;a<=a1;a++){if(Math.abs(a-mid)<=0||((a-a0)%3===2))continue;along?crate(line,a,1.15,.9):crate(a,line,1.15,.9);}}
-      wall(r.x0+1,r.y0+1);wall(r.x1-1,r.y1-1);}
+    if(kind==='pillars'){for(let x=ix0;x<=ix1;x+=3)for(let y=iy0;y<=iy1;y+=3)if(Math.random()<.8)wall(x,y);for(let i=0;i<3;i++)crate(ri(ix0,ix1),ri(iy0,iy1),1.1,.75,false,Math.random()<.5?'barrel':'crate');}
+    else if(kind==='barricade'){const along=w>=h;for(const q of[.34,.66]){const line=along?Math.round(r.x0+(w-1)*q):Math.round(r.y0+(h-1)*q),a0=along?r.y0+1:r.x0+1,a1=along?r.y1-1:r.x1-1,mid=(a0+a1)>>1;
+        for(let a=a0;a<=a1;a++){if(a===mid||((a-a0)%3===2))continue;along?fence(line,a,true):fence(a,line,false);}}
+      crate(r.x0+1,r.y0+1,1.1,.8,false,'barrel');crate(r.x1-1,r.y1-1,1.1,.8,true,'crate');}
     else if(kind==='dais'){/* a raised stone dais in the middle: hold it for the high ground. Steps on two sides. */
       const dx0=cx-1,dx1=cx+1,dy0=cy-1,dy1=cy+1;let ok=true;for(let x=dx0-1;x<=dx1+1;x++)for(let y=dy0-1;y<=dy1+1;y++)if(grid[y*W+x]!==1||nearDoor(x,y))ok=false;
-      if(ok){B(dx0,dy0,dx1+1,dy1+1,1.05);for(let x=dx0;x<=dx1;x++)for(let y=dy0;y<=dy1;y++){cover[y*W+x]=1;cv.push(y*W+x);}
-        const sx=Math.random()<.5;if(sx){B(dx0-.6,cy+.1,dx0,cy+.9,.52);B(dx1+1,cy+.1,dx1+1.6,cy+.9,.52);}else{B(cx+.1,dy0-.6,cx+.9,dy0,.52);B(cx+.1,dy1+1,cx+.9,dy1+1.6,.52);}
+      if(ok){B(dx0,dy0,dx1+1,dy1+1,1.05,0,'dais');for(let x=dx0;x<=dx1;x++)for(let y=dy0;y<=dy1;y++){cover[y*W+x]=1;cv.push(y*W+x);}
+        const sx=Math.random()<.5;if(sx){B(dx0-.6,cy+.1,dx0,cy+.9,.52,0,'step');B(dx1+1,cy+.1,dx1+1.6,cy+.9,.52,0,'step');}else{B(cx+.1,dy0-.6,cx+.9,dy0,.52,0,'step');B(cx+.1,dy1+1,cx+.9,dy1+1.6,.52,0,'step');}
         for(const [x,y] of[[dx0-2,dy0-2],[dx1+2,dy0-2],[dx0-2,dy1+2],[dx1+2,dy1+2]])wall(x,y);}
       else for(let i=0;i<4;i++)crate(ri(ix0,ix1),ri(iy0,iy1),1.1,.75);}
     else if(kind==='split'){/* a wall across the room with two gaps: the gaps are chokepoints */
-      const along=w>=h;if(along){const x=cx,g1=r.y0+((h/4)|0),g2=r.y1-((h/4)|0);for(let y=r.y0;y<=r.y1;y++)if(Math.abs(y-g1)>0&&Math.abs(y-g2)>0)wall(x,y);crate(x-2,g1,1.1,.8);crate(x+2,g2,1.1,.8);}
-      else{const y=cy,g1=r.x0+((w/4)|0),g2=r.x1-((w/4)|0);for(let x=r.x0;x<=r.x1;x++)if(Math.abs(x-g1)>0&&Math.abs(x-g2)>0)wall(x,y);crate(g1,y-2,1.1,.8);crate(g2,y+2,1.1,.8);}}
-    else{/* storeroom: scattered stacks of stone of different heights */
-      for(let i=0;i<ri(6,9);i++)crate(ri(ix0-1,ix1+1),ri(iy0-1,iy1+1),rnd(.8,1.5),rnd(.6,.85),Math.random()<.35);}
+      const along=w>=h;if(along){const x=cx,g1=r.y0+((h/4)|0),g2=r.y1-((h/4)|0);for(let y=r.y0;y<=r.y1;y++)if(y!==g1&&y!==g2)wall(x,y);crate(x-2,g1,1.1,.8,false,'barrel');crate(x+2,g2,1.1,.8);}
+      else{const y=cy,g1=r.x0+((w/4)|0),g2=r.x1-((w/4)|0);for(let x=r.x0;x<=r.x1;x++)if(x!==g1&&x!==g2)wall(x,y);crate(g1,y-2,1.1,.8,false,'barrel');crate(g2,y+2,1.1,.8);}}
+    else{/* storeroom: crates and barrels stacked at different heights */
+      for(let i=0;i<ri(6,9);i++){const br=Math.random()<.35;crate(ri(ix0-1,ix1+1),ri(iy0-1,iy1+1),br?1.05:rnd(.85,1.4),br?.8:rnd(.65,.85),!br&&Math.random()<.35,br?'barrel':'crate');}}}
     /* undo the layout if any open cell of the room can no longer reach the rest */
     const seen=new Uint8Array(W*H),q=[];let tot=0;for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++){const k=y*W+x;if(grid[k]!==0&&!cover[k]){tot++;if(!q.length){q.push(k);seen[k]=1;}}}
     for(let i=0;i<q.length;i++){const k=q[i];for(const o of[1,-1,W,-W]){const m=k+o,mx=m%W,my=(m/W)|0;if(mx<r.x0||mx>r.x1||my<r.y0||my>r.y1||seen[m]||grid[m]===0||cover[m])continue;seen[m]=1;q.push(m);}}
-    if(q.length<tot){for(const k of ch)grid[k]=1;for(const k of cv)cover[k]=0;plats.length=pc;r.kind='plain';}
+    if(q.length<tot){for(const k of ch)grid[k]=1;for(const k of cv)cover[k]=0;PL.length=0;ch.length=0;cv.length=0;r.kind='plain';}
   }
+  /* the whole floor must still walk: from the start stub to every door, the exit stub and every open room cell. If not, undo layouts until it does. */
+  const walkOK=()=>{const seen=new Uint8Array(W*H),s0=sStub.y*W+sStub.x,q=[s0];seen[s0]=1;
+    for(let i=0;i<q.length;i++){const k=q[i];for(const o of[1,-1,W,-W]){const m=k+o;if(m<0||m>=W*H||seen[m]||grid[m]===0||cover[m])continue;seen[m]=1;q.push(m);}}
+    for(const d of doors)if(!seen[d.y*W+d.x])return false;if(!seen[eStub.y*W+eStub.x])return false;
+    for(let k=0;k<W*H;k++)if(roomOf[k]>=0&&grid[k]!==0&&!cover[k]&&!seen[k])return false;return true;};
+  for(let n=rooms.length-1;n>=0&&!walkOK();n--){const r=rooms[n];if(!r._ch.length&&!r._cv.length&&!r._pl.length)continue;for(const k of r._ch)grid[k]=1;for(const k of r._cv)cover[k]=0;r._pl.length=0;r._ch.length=0;r._cv.length=0;r.kind='plain';}
+  const plats=[];for(const r of rooms){for(const p of r._pl)plats.push(p);delete r._pl;delete r._ch;delete r._cv;}
   return {W,H,S,grid,roomOf,rooms,doors,start,exit,path,sStub,eStub,keyRooms,boss,special,vault,campChild,campDoor,spawnHall,floor:f,plats:plats.length?plats:null,cover,tallAll:true};
 }
 
@@ -4474,7 +4488,7 @@ function buildLevel0(f){
     }
   }
   /* parkour blocks: tops, sides and (for floating slabs) undersides, tiled so the texture never stretches */
-  if(L.plats)for(const p of L.plats){
+  if(L.plats)for(const p of L.plats){if(p.kind&&p.kind!=='dais'&&p.kind!=='step')continue;
     const {x0,x1,z0,z1,y0,y1}=p;
     for(let xa=x0;xa<x1-.01;xa+=CELL)for(let za=z0;za<z1-.01;za+=CELL){const xb=Math.min(x1,xa+CELL),zb=Math.min(z1,za+CELL),uf=[0,(xb-xa)/CELL,0,(zb-za)/CELL];
       quad(14,[xa,y1,za],[xb,y1,za],[xb,y1,zb],[xa,y1,zb],[0,1,0],[1.1,1.1,1.1,1.1],uf);
@@ -4488,7 +4502,7 @@ function buildLevel0(f){
   }
   const lg=new T.BufferGeometry();
   lg.setAttribute('position',new T.Float32BufferAttribute(pos,3));lg.setAttribute('uv',new T.Float32BufferAttribute(uv,2));lg.setAttribute('normal',new T.Float32BufferAttribute(nor,3));lg.setAttribute('color',new T.Float32BufferAttribute(col,3));
-  const lm=new T.Mesh(lg,levelMat);lm.userData.own=1;lvl.add(lm);
+  const lm=new T.Mesh(lg,levelMat);lm.userData.own=1;lvl.add(lm);try{buildCoverProps();}catch(e){}
   /* torches: thinned so every room and corridor stretch gets a few */
   const perRoom={};
   torchSpots.sort(()=>Math.random()-.5).forEach(s=>{
@@ -5832,7 +5846,7 @@ const spellPow=()=>{const w=curW(),foc=w?(1+.07*((w.lv||1)-1))*Math.sqrt(RAR[w.r
 const lookIn=d=>{if(d>.0015){P.lookT=.25;P.lookA=(P.lookA||0)+d;}};
 function assistCalc(){
   P.as=null;if(meta.aim===false||PVP.on){P.lock=null;return;}const a=aimDir(),ah=Math.hypot(a.x,a.z)||1,c=[];let cur=null;
-  for(const e of enemies){if(e.dead)continue;const vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz);if(hd>26||hd<.9)continue;
+  for(const e of enemies){if(e.dead)continue;const vx=e.x-P.x,vz=e.z-P.z,hd=Math.hypot(vx,vz);if(hd>((P.ads||0)>.5||P.scoped?34:11)||hd<.9)continue;
     const vy=clamp(EY+a.y/ah*hd,e.y+e.h*.3,e.y+e.h*.85)-EY;let dy=Math.atan2(-vx,-vz)-P.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const dp=Math.atan2(vy,hd)-P.pitch;
     if(Math.abs(dy)>(e===P.lock?1.25:.95)||Math.abs(dp)>.8)continue;const o={e,hd,ang:Math.hypot(dy,dp*.5),dyaw:dy,dpit:dp,v:[vx,vy,vz,Math.hypot(hd,vy)]};c.push(o);if(e===P.lock)cur=o;}
   if(cur&&!los(P.x,P.z,cur.e.x,cur.e.z))cur=null;
@@ -5910,7 +5924,7 @@ function fireWeapon(){
     const off=pel?0:(i-(n-1)/2)*.045,ox=P.x+rx*.16+a.x*.3,oy=EY-.14+a.y*.3,oz=P.z+rz*.16+a.z*.3;
     let dx=a.x*30-rx*.16+rx*off*30+rnd(-sp,sp),dy=a.y*30+.14+rnd(-sp,sp)*.6,dz=a.z*30-rz*.16+rz*off*30+rnd(-sp,sp);const l=Math.hypot(dx,dy,dz);
     const crit=Math.random()<cc;
-    shootProj({kind:C.kind,from:'p',x:ox,y:oy,z:oz,dx:dx/l,dy:dy/l,dz:dz/l,spd:C.spd*(1+.25*AW('boost')),life:pel?.45:1.6,blast:S.blast||(shell&&i===0?2.6:0),col:shell&&i===0?0xffb030:null,dmg:base*((S.blast||pel)?1+.35*rk('twin'):(1+.35*rk('twin'))/(1+rk('twin')))*(shell&&i===0?(pel?pel*.7:2.5):1)*(crit?(S.ccm||2):1)*rnd(.9,1.1),crit,pierce:S.pierce+rk('pierce'),poison:S.poison?base:0,pvm,snp:w.c==='sniper'||w.c==='crossbow'||(C.slot==='gun'&&C.kind!=='pellet'&&C.kind!=='rocket'&&(V.cd||0)>=.7)});
+    shootProj({kind:C.kind,from:'p',x:ox,y:oy,z:oz,dx:dx/l,dy:dy/l,dz:dz/l,spd:C.spd*(1+.25*AW('boost')),life:(pel?.45:1.6)*((P.ads||0)>.5||P.scopeFire?1.9:1),blast:S.blast||(shell&&i===0?2.6:0),col:shell&&i===0?0xffb030:null,dmg:base*((S.blast||pel)?1+.35*rk('twin'):(1+.35*rk('twin'))/(1+rk('twin')))*(shell&&i===0?(pel?pel*.7:2.5):1)*(crit?(S.ccm||2):1)*rnd(.9,1.1),crit,pierce:S.pierce+rk('pierce'),poison:S.poison?base:0,pvm,snp:w.c==='sniper'||w.c==='crossbow'||(C.slot==='gun'&&C.kind!=='pellet'&&C.kind!=='rocket'&&(V.cd||0)>=.7)});
   }
   try{fx2Fire(C,V,pel,a);}catch(e){}
   sfx(C.kind==='rocket'?'fire':C.kind==='slug'?'snipe':pel?'boom':C.kind==='bullet'?'rifle':'shoot');
@@ -11287,6 +11301,18 @@ const FZTOTAL=()=>Object.keys(FZ2).length+Object.keys(ULT3).length;
 const ULTCD3=45,ULTCD2=20;
 /* the finisher: every fusion and ultimate ends by sweeping the room. An ultimate kills everything in your room (elites too) and everything
    near you or in plain sight; bosses lose a quarter of their life. A 2-spell fusion kills normal monsters, takes 65% off elites and 10% off bosses. */
+/* the ultimate's opening: a flash, three shockwaves and a beam over you. Looks only: the ultimate's own effect does the work. */
+function ultOpen(X){const hex=X.hex||0xffffff,hex2=X.hex2||hex,c=hex2c(hex),R=24;
+  HSTOP=Math.max(HSTOP,.18);shake=Math.max(shake,.3);pillarFx(P.x,P.z,2.6,hex,.9,.5);pillarFx(P.x,P.z,1,0xffffff,.6,.75);sphereFx(P.x,1.4,P.z,1,9,hex,.45,.3);
+  for(let w=0;w<3;w++)after(w*.14,()=>{if(state!=='play')return;ringFx(P.x,P.z,1,R*(.35+w*.2),w%2?hex2:0xffffff,.5,.1+w*.04);});
+  for(let i=0;i<(fxLow()?14:28);i++){const an=Math.random()*6.283,rr=rnd(2,R*.5);spark(P.x+Math.cos(an)*rr,rnd(3,6),P.z+Math.sin(an)*rr,0,rnd(-6,-2),0,.6,i%2?c:[1,1,1],.4);}}
+/* how long an ultimate or fusion locks its spells: stronger and wider ones wait longer, never 45 s */
+function ultCdFor(ids){try{const Zr=fzResolve(ids)[1];if(!Zr)return 0;const n=ids.length,name=Zr[0],d=Zr[1]||'';
+  const wide=/every enemy|everything you can see|everything in sight|all you can see|whole room|the room|everything near|every foe/i.test(d),
+    self=/^(for [a-z ]+ seconds )?(you|your|every wound|every blow you|nothing that strikes|a (rank|shield|golden chalice))/i.test(d)&&!wide,
+    kind=n===3&&typeof RWK!=='undefined'?RWK[name]:null;
+  if(n===3)return kind==='multi'?30:wide?28:kind==='swarm'?24:kind==='echo'?22:self?14:20;
+  return wide?15:self?8:11;}catch(e){return ids.length===3?20:11;}}
 function ultFinish(X){
   if(PVP.on||!L||!L.roomOf)return;
   const n=X.n,hex=X.hex||0xffffff,hex2=X.hex2||hex,c=hex2c(hex),c2=hex2c(hex2),R=n>=3?32:20,room=L.roomOf[cellIdx(P.x,P.z)];
@@ -11358,7 +11384,7 @@ function castFusion(ids){
   sfx('zap');{const h=handP(X.a);fzGlow(h.x,h.y,h.z,.5,F[0][3],.35,{s1:2.2,star:1});}
   if(n===3){sfx('roar');fzCutIn(name,F[0][3]);fzImpact(1);}P.tint=n===2?.4:.55;$('castfx').style.color='#'+F[0][3].toString(16).padStart(6,'0');
   if(n===3&&RWK[name])ultRoom(X,Zr,RWK[name]);else try{Zr[2](X);}catch(e){}
-  try{ultFinish(X);}catch(e){}
+  if(n===3)try{ultOpen(X);}catch(e){}
 }
 const R0=n=>n===2?4.4:6.2;
 function cast(id){const _s=SPC;SPC=true;try{return cast0(id);}finally{SPC=_s;}}
@@ -11375,7 +11401,7 @@ function cast0(id){
     const cost=A.ids.slice(1).concat(id).reduce((q,k)=>q+SK[k].cost,0);if(P.mana<cost){msg('Not enough mana to fuse.','bad','mana');sfx('locked');return;}
     A.ids.push(id);A.need--;sfx('pickup');
     if(A.need<=0&&A.ids.includes('raise')&&!canRaise(true)){msg('Nothing to raise and no thralls to change. Kill something first.','bad','raise');sfx('locked');disarm();return;}
-    if(A.need<=0){const ids=A.ids;P.edgeT=EV()?6:4;if(CH.raise){P.lastSpell=ids.slice();const inf=infOf(ids);if(inf)for(const a of allies)infuse(a,inf);}P.fzPaid={cost:cost,ids:ids.slice()};P.mana-=cost;{const util=ids.includes('raise')||ids.includes('lastgate'),big=util?0:(ids.length>=3?ULTCD3:ULTCD2)*(PVP.on?.6:1)*(1-.06*rk('cdr'));P.cdMax=P.cdMax||{};for(const k of ids){P.cds[k]=Math.max(spellCd(k),big);P.cdMax[k]=P.cds[k];}}disarm();castFusion(ids);}else armHud();
+    if(A.need<=0){const ids=A.ids;P.edgeT=EV()?6:4;if(CH.raise){P.lastSpell=ids.slice();const inf=infOf(ids);if(inf)for(const a of allies)infuse(a,inf);}P.fzPaid={cost:cost,ids:ids.slice()};P.mana-=cost;{const util=ids.includes('raise')||ids.includes('lastgate'),big=util?0:ultCdFor(ids)*(PVP.on?.7:1)*(1-.06*rk('cdr'));P.cdMax=P.cdMax||{};for(const k of ids){P.cds[k]=Math.max(spellCd(k),big);P.cdMax[k]=P.cds[k];}}disarm();castFusion(ids);}else armHud();
     return;}
   if(!P.echo&&P.tapId===id&&time-P.tapT<.45){if(barSpells().length<2){msg('You need a second spell to fuse.','bad','fuse');return;}P.tapT=time;P.arm={ids:[id],need:1,t:7};sfx('ward');armHud();return;}
   P.tapId=id;P.tapT=time;
@@ -11935,14 +11961,14 @@ function updPlayer(dt){
   if(P.y<=0&&v>2&&!(P.slide>0)){P.stepD=(P.stepD||0)+v*dt;if(P.stepD>2.5){P.stepD=0;noise(.05,.045,380);}}
   if(P.fovK>0)P.fovK-=dt*3.5;
   P.fireCd-=dt;
-  {const fH=!!(firing||padFire),sc=meta.scope===true&&P.hand==='gun'&&!!P.gun,pn=performance.now(),pa=padAds&&state==='play'&&P.hand==='gun'&&!!P.gun;
+  {const fH=!!(firing||padFire),sc=meta.scope===true&&P.hand==='gun'&&!!P.gun,pn=performance.now(),pa=(padAds||TSC.on)&&state==='play'&&P.hand==='gun'&&!!P.gun;
     if(P._pn&&pn-P._pn>400){P.holdT=0;P.ads=0;P.scoped=false;P.fireQ=false;P.scopeFire=false;}P._pn=pn;
     /* CS:GO / CODM-style progressive ADS: zoom starts immediately, full scope in ~0.2s in / ~0.15s out */
     const w0=curW(),snp=!!(w0&&w0.c==='sniper'),adsIn=snp?.22:.18,adsOut=snp?.16:.12;
     if(pa){
       /* controller: hold LT to scope. Guns fire continuously while scoped; snipers still fire only on RT. */
       P.holdT=0;P.fireQ=false;P.ads=Math.min(1,(P.ads||0)+dt/adsIn);P.scoped=P.ads>.55;P.scopeFire=P.ads>.4;
-      if((snp?fH:(P.ads>.4||fH))&&P.fireCd<=0&&P.roll<=0)fireWeapon();
+      if(((snp||TSC.on)?fH:(P.ads>.4||fH))&&P.fireCd<=0&&P.roll<=0)fireWeapon();
     }else if(sc){
       if(P._pa)P.scopeFire=false;
       if(fH){P.holdT=(P.holdT||0)+dt;P.ads=Math.min(1,(P.ads||0)+dt/adsIn);P.scoped=P.ads>.55;
@@ -12487,6 +12513,129 @@ function closeSummon(){const S=$('summon');if(!S||S.hidden)return;sumMelt();S.hi
 {/* a SUMMON button in the Book */const row=$('invclose')&&$('invclose').parentNode;if(row){const b=document.createElement('button');b.type='button';b.id='invsum';b.textContent='✦ Summon weapons';b.style.cssText='border-color:#5a8aff;color:#cfe0ff';b.addEventListener('click',openSummon);row.insertBefore(b,$('invclose'));}
  addEventListener('keydown',e=>{const S=$('summon');if(S&&!S.hidden){e.stopPropagation();if(e.code==='Escape'||e.code==='Tab'||e.code==='KeyI'){e.preventDefault();closeSummon();}}},true);}
 
+/* ===== POLISH PACK: dungeon props for cover, main menu, touch scope, controller binds ===== */
+
+/* ---------- cover props: wooden crates, barrels and barricades, all merged into one mesh (one draw call per floor) ---------- */
+const PROPMAT=new T.MeshPhongMaterial({color:0xffffff,vertexColors:true,map:NOISE,flatShading:true,shininess:0,specular:0x000000});
+function buildCoverProps(){
+  if(!L||!L.plats)return;const ps=L.plats.filter(p=>p.kind==='crate'||p.kind==='barrel'||p.kind==='fence');if(!ps.length)return;
+  const pos=[],nor=[],col=[],uv=[],tint=(L.theme&&L.theme.tint)||0xffffff,tr=((tint>>16)&255)/255,tg=((tint>>8)&255)/255,tb=(tint&255)/255;
+  const C=h=>[((h>>16)&255)/255*tr,((h>>8)&255)/255*tg,(h&255)/255*tb];
+  const box=(cx,cy,cz,w,h,d,hex,ry)=>{const c=C(hex),cs=Math.cos(ry||0),sn=Math.sin(ry||0),hx=w/2,hy=h/2,hz=d/2;
+    const F=[[[1,0,0],[[hx,-hy,-hz],[hx,hy,-hz],[hx,hy,hz],[hx,-hy,hz]],d,h],[[-1,0,0],[[-hx,-hy,hz],[-hx,hy,hz],[-hx,hy,-hz],[-hx,-hy,-hz]],d,h],
+      [[0,1,0],[[-hx,hy,-hz],[-hx,hy,hz],[hx,hy,hz],[hx,hy,-hz]],w,d],[[0,-1,0],[[-hx,-hy,hz],[-hx,-hy,-hz],[hx,-hy,-hz],[hx,-hy,hz]],w,d],
+      [[0,0,1],[[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],[-hx,-hy,hz]],w,h],[[0,0,-1],[[-hx,-hy,-hz],[-hx,hy,-hz],[hx,hy,-hz],[hx,-hy,-hz]],w,h]];
+    for(const [n,v,a,b] of F){const U=[[0,0],[0,b],[a,b],[a,0]];for(const i of[0,1,2,0,2,3]){const p=v[i];pos.push(cx+p[0]*cs+p[2]*sn,cy+p[1],cz-p[0]*sn+p[2]*cs);nor.push(n[0]*cs+n[2]*sn,n[1],-n[0]*sn+n[2]*cs);col.push(c[0],c[1],c[2]);uv.push(U[i][0]*.5,U[i][1]*.5);}}};
+  const cyl=(cx,cy,cz,r,h,hex,seg)=>{const c=C(hex);seg=seg||8;for(let i=0;i<seg;i++){const a0=i/seg*6.283,a1=(i+1)/seg*6.283,x0=Math.cos(a0)*r,z0=Math.sin(a0)*r,x1=Math.cos(a1)*r,z1=Math.sin(a1)*r,am=(a0+a1)/2,nx=Math.cos(am),nz=Math.sin(am);
+      const q=[[x0,-h/2,z0],[x0,h/2,z0],[x1,h/2,z1],[x1,-h/2,z1]];for(const k of[0,1,2,0,2,3]){pos.push(cx+q[k][0],cy+q[k][1],cz+q[k][2]);nor.push(nx,0,nz);col.push(c[0],c[1],c[2]);uv.push(i/seg*2,(q[k][1]>0?1:0)*.6);}
+      for(const [yy,ny] of[[h/2,1],[-h/2,-1]])for(const p of ny>0?[[0,0],[x1,z1],[x0,z0]]:[[0,0],[x0,z0],[x1,z1]]){pos.push(cx+p[0],cy+yy,cz+p[1]);nor.push(0,ny,0);col.push(c[0]*.85,c[1]*.85,c[2]*.85);uv.push(p[0]+.5,p[1]+.5);}}};
+  const WOOD=0x7a5230,WOOD2=0x5a3a20,DARK=0x3a2614,IRON=0x4a4a54,IRON2=0x2e2e36;
+  for(const p of ps){const w=p.x1-p.x0,d=p.z1-p.z0,h=p.y1-p.y0,cx=(p.x0+p.x1)/2,cz=(p.z0+p.z1)/2,y0=p.y0;
+    if(p.kind==='crate'){/* a plank crate: a body, dark edge frames, a cross brace on each side, iron corner caps */
+      const t=Math.min(.12,Math.min(w,d,h)*.1);box(cx,y0+h/2,cz,w-.04,h-.04,d-.04,(Math.abs(cx*7+cz*3)|0)%2?WOOD:0x84603a);
+      for(const sx of[-1,1])for(const sz of[-1,1])box(cx+sx*(w/2-t/2),y0+h/2,cz+sz*(d/2-t/2),t+.01,h,t+.01,DARK);
+      for(const sy of[0,1])for(const sz of[-1,1])box(cx,y0+(sy?h-t/2:t/2),cz+sz*(d/2-t/2),w,t+.01,t+.01,DARK);
+      for(const sy of[0,1])for(const sx of[-1,1])box(cx+sx*(w/2-t/2),y0+(sy?h-t/2:t/2),cz,t+.01,t+.01,d,DARK);
+      for(const sz of[-1,1])box(cx,y0+h/2,cz+sz*(d/2+.005),w*.92,t*.8,.02,WOOD2,0);
+      for(const sx of[-1,1])box(cx+sx*(w/2+.005),y0+h/2,cz,.02,t*.8,d*.92,WOOD2,0);
+      for(const sx of[-1,1])for(const sz of[-1,1])box(cx+sx*(w/2-.06),y0+h-.06,cz+sz*(d/2-.06),.15,.13,.15,IRON);}
+    else if(p.kind==='barrel'){/* a cluster of banded barrels filling the block */
+      const n=w>1.6&&d>1.6?3:w>1.2?2:1,r=Math.min(w,d)/(n>1?3.6:2.2);const spots=n===1?[[0,0]]:n===2?[[-w*.22,0],[w*.22,0]]:[[-w*.22,-d*.18],[w*.22,-d*.18],[0,d*.22]];
+      for(const [ox,oz] of spots){const bh=h-.02;cyl(cx+ox,y0+bh/2,cz+oz,r,bh,(Math.abs(ox*9+oz*5+cx)|0)%2?0x6a4526:0x7a5230,10);
+        for(const yy of[.18,.5,.82])cyl(cx+ox,y0+bh*yy,cz+oz,r+.025,.07,IRON2,10);cyl(cx+ox,y0+bh+.005,cz+oz,r*.82,.02,DARK,10);}
+      if(n===1)box(cx,y0+.03,cz,w*.95,.06,d*.95,DARK);}
+    else if(p.kind==='fence'){/* a wooden barricade: posts, thick planks, an iron rail and spikes on top */
+      const along=p.ori==='z',L0=along?d:w,th=along?w:d,rot=along?Math.PI/2:0,ax=along?0:1,az=along?1:0;
+      for(const s of[-.5,.5]){const px=cx+ax*s*(L0-.14),pz=cz+az*s*(L0-.14);box(px,y0+h/2+.06,pz,.16,h+.12,th+.06,DARK);}
+      for(let k=0;k<4;k++){const yy=y0+.14+k*((h-.2)/4)+.1;box(cx,yy,cz,L0-.08,(h-.2)/4-.04,th*.7,k%2?WOOD:WOOD2,rot);}
+      box(cx,y0+h-.04,cz,L0,.07,th*.85,IRON,rot);
+      for(let k=0;k<5;k++){const t=(k+.5)/5-.5;box(cx+ax*t*L0,y0+h+.12,cz+az*t*L0,.05,.24,.05,IRON2);}}
+  }
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
+  const m=new T.Mesh(g,PROPMAT);m.userData.own=1;lvl.add(m);
+}
+
+/* ---------- main menu: a column of words over the tower, like a proper game menu ---------- */
+{const TI=$('title');
+ const st=document.createElement('style');st.textContent=
+ '#title.mm:not([hidden]){background:linear-gradient(90deg,rgba(3,4,6,.92) 0%,rgba(3,4,6,.55) 38%,rgba(3,4,6,.05) 70%),radial-gradient(ellipse at 70% 40%,transparent 30%,rgba(0,0,0,.55) 100%)!important;backdrop-filter:none!important;display:block!important;padding:0!important;overflow:hidden}'+
+ '#title.mm>*:not(#mm):not(.mmpage){display:none!important}#title.mm .mmpage{display:none}#title.mm .mmpage.on{display:flex}#title.mm:not([data-pg="main"]) #mm{display:none}'+
+ '#mm{position:absolute;inset:0;pointer-events:none}#mmnav{position:absolute;left:max(28px,env(safe-area-inset-left,0px) + 20px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:flex-start;gap:2px;pointer-events:auto}'+
+ '#mmnav button{all:unset;cursor:pointer;font-family:inherit;font-size:clamp(15px,3.1vh,26px);letter-spacing:3px;color:#c9d6d9;padding:5px 2px;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);transition:color .12s,transform .12s,letter-spacing .12s}'+
+ '#mmnav button:hover,#mmnav button:focus,#mmnav button.gpf{color:#ffd890;transform:translateX(8px);letter-spacing:4px;text-shadow:0 2px 0 #000,0 0 14px rgba(255,150,40,.55)}#mmnav button[hidden]{display:none}'+
+ '#mmlogo{position:absolute;right:max(26px,env(safe-area-inset-right,0px) + 18px);bottom:22px;text-align:right;pointer-events:auto;cursor:pointer}#mmlogo b{display:block;font-size:clamp(34px,10vh,92px);line-height:.9;color:#f2ead8;letter-spacing:2px;text-shadow:0 4px 0 #000,0 0 30px rgba(255,120,30,.35)}'+
+ '#mmlogo i{font-style:normal;font-size:clamp(9px,1.6vh,13px);color:#ff9426;letter-spacing:4px}'+
+ '#mmbuild{position:absolute;left:max(28px,env(safe-area-inset-left,0px) + 20px);bottom:14px;font-size:10px;color:#8a9496;text-shadow:0 1px 0 #000}#mmrec{position:absolute;left:max(28px,env(safe-area-inset-left,0px) + 20px);bottom:30px;font-size:10px;color:#b8a888;max-width:46vw;text-shadow:0 1px 0 #000}'+
+ '.mmpage{position:absolute;inset:0;overflow:auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;align-items:center;gap:10px;background:rgba(4,6,8,.86)}'+
+ '.mmpage .mmhead{align-self:stretch;display:flex;align-items:center;gap:14px;border-bottom:2px solid #3a3226;padding-bottom:8px}.mmpage .mmhead h2{margin:0;letter-spacing:3px;color:#ffd890;font-size:18px}'+
+ '.mmback{min-width:auto!important}.mmpage p{max-width:44em;text-align:center}#mmcred p{color:#c9c2b0}';
+ document.head.appendChild(st);
+ const mm=document.createElement('div');mm.id='mm';
+ mm.innerHTML='<nav id="mmnav"><button type="button" id="mmcont" hidden>CONTINUE</button><button type="button" data-p="climb">NEW CLIMB</button><button type="button" data-p="mp">MULTIPLAYER</button><button type="button" data-p="opt">OPTIONS</button><button type="button" data-p="how">HOW TO PLAY</button><button type="button" data-p="cred">CREDITS</button></nav>'+
+   '<div id="mmlogo"><b>GLOOMSPIRE</b><i>EVERY FLOOR IS LOCKED</i></div><div id="mmrec"></div><div id="mmbuild">Gloomspire · Build 1.8</div>';
+ TI.appendChild(mm);
+ const page=(id,title)=>{const d=document.createElement('div');d.className='mmpage';d.id='mmp-'+id;d.innerHTML='<div class="mmhead"><button type="button" class="mmback">◀ BACK</button><h2>'+title+'</h2></div>';TI.appendChild(d);return d;};
+ const mv=(d,ids)=>{for(const id of ids){const e=typeof id==='string'?$(id):id;if(e)d.appendChild(e);}};
+ const kids=[...TI.children];
+ const pC=page('climb','NEW CLIMB'),pM=page('mp','MULTIPLAYER'),pO=page('opt','OPTIONS'),pH=page('how','HOW TO PLAY'),pK=page('cred','CREDITS');
+ /* climb: the intro, who climbs, difficulty, and the start buttons */
+ const intro=kids.find(e=>e.tagName==='P'&&!e.id&&!e.className),who=kids.find(e=>e.tagName==='P'&&e.className==='dim'&&!e.id),row=$('start').parentNode;
+ mv(pC,[intro,who,'chrow','chpage','chinfo','diffrow','diffd']);const r2=document.createElement('div');r2.className='row';mv(r2,['cont','start']);pC.appendChild(r2);
+ mv(pO,['fs','qualb2','inst','instHelp']);{const b=document.createElement('button');b.type='button';b.id='mmpad';b.textContent='Controller buttons';b.addEventListener('click',()=>openPadBind());pO.insertBefore(b,$('fs'));const o=document.createElement('div');o.className='row';o.style.flexWrap='wrap';o.style.justifyContent='center';o.style.gap='8px';mv(o,['mmpad','fs','qualb2','inst']);pO.insertBefore(o,$('instHelp'));}
+ mv(pH,['howto']);mv(pM,['mpbox','mpstat']);
+ pK.insertAdjacentHTML('beforeend','<div id="mmcred"><p><b style="color:#ffd890">GLOOMSPIRE</b></p><p>A tower of stacked stone. Every floor is locked, every lift goes up, and every death drops you down the shaft.</p><p>Built in the browser with three.js. Music and sound are made live in Web Audio.</p><p>Thank you for climbing.</p></div>');
+ if(row&&!row.children.length)row.remove();
+ const go=p=>{TI.dataset.pg=p;TI.querySelectorAll('.mmpage').forEach(e=>e.classList.toggle('on',e.id==='mmp-'+p));TI.scrollTop=0;const pg=$('mmp-'+p);if(pg)pg.scrollTop=0;try{document.querySelectorAll('.gpf').forEach(e=>e.classList.remove('gpf'));}catch(e){}};
+ TI.classList.add('mm');go('main');
+ mm.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.p);try{sfx('key');}catch(e){}}));
+ TI.querySelectorAll('.mmback').forEach(b=>b.addEventListener('click',()=>go('main')));
+ $('mmcont').addEventListener('click',()=>{const c=$('cont');if(c&&!c.hidden)c.click();});
+ $('mmlogo').addEventListener('click',()=>{try{$('gtitle').click();}catch(e){}});
+ addEventListener('keydown',e=>{if(state==='title'&&!TI.hidden&&TI.dataset.pg!=='main'&&e.code==='Escape'){e.preventDefault();go('main');}});
+ /* keep the menu in step: Continue appears when a climb is saved, the record line follows the old one, and the menu resets when you come back */
+ const sync=()=>{if(state!=='title'){if(TI.dataset.pg!=='main')go('main');return;}if(TI.hidden)return;const c=$('cont');$('mmcont').hidden=!c||c.hidden;const rc=$('record'),ng=$('nogl');$('mmrec').textContent=ng&&!ng.hidden?ng.textContent:rc?rc.textContent:'';
+   const mp=$('mmnav').querySelector('[data-p="climb"]');if(mp)mp.textContent=(typeof MP!=='undefined'&&MP.on&&MP.mode==='pvp')?'ENTER THE ARENA':'NEW CLIMB';};
+ setInterval(sync,400);sync();
+ window.__mmGo=go;}
+
+/* ---------- touch SCOPE button (not on by default: add it in Customize) ---------- */
+const TSC={on:false};
+{const t=$('touch');if(t&&!$('tscope')){const b=document.createElement('button');b.type='button';b.id='tscope';b.hidden=true;b.textContent='SCOPE';t.appendChild(b);
+  const st=document.createElement('style');st.textContent='#tscope{position:absolute;width:62px;height:62px;border-radius:50%;font-size:10px;border-color:#7fd6ff;color:#bfe8ff}#tscope.on{background:rgba(80,160,255,.35)}';document.head.appendChild(st);
+  const dn=e=>{if(gameEl.classList.contains('ctledit'))return;e.preventDefault();e.stopPropagation();TSC.on=true;b.classList.add('on');try{b.setPointerCapture(e.pointerId);}catch(_){}};
+  const up=e=>{TSC.on=false;b.classList.remove('on');};
+  b.addEventListener('pointerdown',dn);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up);}}
+
+/* ---------- controller button binding ---------- */
+const PBD={fire:7,scope:-1,cast:6,next:5,prev:4,swap:15,jump:2,slide:0,skill:1,loadout:3,talk:11,run:10,s1:12,s2:13,s3:14,book:8,pause:9};
+const PBN={fire:'Fire',scope:'Scope (hold)',cast:'Cast spell',next:'Next spell',prev:'Previous spell',swap:'Swap weapon',jump:'Jump',slide:'Slide',skill:'Character skill',loadout:'Loadout / talk',talk:'Talk',run:'Sprint toggle',s1:'Spell slot 1',s2:'Spell slot 2',s3:'Spell slot 3',book:'Book',pause:'Pause'};
+const PB=a=>{const v=meta.padBind&&meta.padBind[a];return v==null?PBD[a]:v;};
+const PBb=(b,a)=>{const i=PB(a);return i>=0&&!!b(i);};
+const PBh=(hit,a)=>{const i=PB(a);return i>=0&&!!hit(i);};
+function padBtnName(i){if(i<0)return '—';const ps=typeof pad!=='undefined'&&pad.type==='playstation';
+  const X=['A','B','X','Y','LB','RB','LT','RT','View','Menu','L3','R3','D-pad up','D-pad down','D-pad left','D-pad right'],S=['Cross','Circle','Square','Triangle','L1','R1','L2','R2','Share','Options','L3','R3','D-pad up','D-pad down','D-pad left','D-pad right'];return (ps?S:X)[i]||('Button '+i);}
+let PBW=null;
+function openPadBind(){
+  let S=$('padbind');
+  if(!S){S=document.createElement('section');S.id='padbind';S.className='screen';S.hidden=true;
+    S.innerHTML='<h2>CONTROLLER BUTTONS</h2><p class="dim" id="pbnote">Pick an action, then press the button you want for it. Works for Xbox, PlayStation and other controllers.</p><div id="pblist"></div><div class="row" style="flex-wrap:wrap;justify-content:center;gap:8px"><button type="button" id="pbtype"></button><button type="button" id="pbreset">Reset to default</button><button type="button" id="pbdone" class="go">Done</button></div>';
+    gameEl.appendChild(S);const st=document.createElement('style');st.textContent='#padbind{z-index:6;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px}#padbind[hidden]{display:none!important}#pblist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;width:min(94vw,760px)}#pblist button{display:flex;justify-content:space-between;gap:8px;text-align:left}#pblist button b{color:#ffd890}#pblist button.wait{border-color:#ffd24a;animation:pbw .6s infinite alternate}@keyframes pbw{to{box-shadow:0 0 12px #ffd24a}}';document.head.appendChild(st);
+    $('pbdone').addEventListener('click',closePadBind);$('pbreset').addEventListener('click',()=>{meta.padBind={};save();PBW=null;pbRender();});
+    $('pbtype').addEventListener('click',()=>{const o=['auto','ps','axtrig','gen','xbox'];meta.padmap=o[(o.indexOf(meta.padmap||'auto')+1)%o.length];try{pad.lay=null;pad.prev=[];}catch(e){}save();pbRender();});}
+  S.dataset.prev=state;S.hidden=false;for(const id of['pause','title'])if($(id)&&!$(id).hidden){S.dataset.under=id;$(id).hidden=true;}pbRender();
+}
+function pbRender(){const box=$('pblist');if(!box)return;box.textContent='';
+  for(const a in PBD){const b=document.createElement('button');b.type='button';b.innerHTML='<span>'+PBN[a]+'</span><b>'+(PBW&&PBW.a===a?'press a button…':padBtnName(PB(a)))+'</b>';if(PBW&&PBW.a===a)b.classList.add('wait');
+    b.addEventListener('click',()=>{PBW={a,t:performance.now()};$('pbnote').textContent='Press a button on your controller for '+PBN[a]+'. Press the same action again to clear it.';pbRender();});box.appendChild(b);}
+  const PML2={auto:'Auto',ps:'PlayStation raw',axtrig:'Axis triggers',gen:'Generic',xbox:'Xbox raw'};$('pbtype').textContent='Controller type: '+PML2[meta.padmap||'auto'];
+  try{if(!(typeof pad!=='undefined'&&pad.on))$('pbnote').textContent='Connect a controller and press any button on it, then pick an action to change it.';}catch(e){}}
+/* called from the controller loop with the first newly pressed button while an action is waiting */
+function pbTake(i){if(!PBW)return false;if(performance.now()-PBW.t<180)return true;const a=PBW.a;meta.padBind=meta.padBind||{};
+  for(const k in PBD)if(k!==a&&PB(k)===i)meta.padBind[k]=PB(a);/* swap with whatever had that button */
+  meta.padBind[a]=PB(a)===i&&a==='scope'?-1:i;PBW=null;save();try{sfx('key');}catch(e){}$('pbnote').textContent=PBN[a]+' is now '+padBtnName(meta.padBind[a])+'.';pbRender();return true;}
+function closePadBind(){const S=$('padbind');if(!S)return;PBW=null;S.hidden=true;const u=S.dataset.under;if(u&&$(u)){$(u).hidden=false;}S.dataset.under='';try{padMapUi();}catch(e){}}
+if(!meta.tapMig){meta.tapLv=0;meta.tapMig=1;try{save();}catch(e){}}
+
 function fx2Tick(dt){
   if(mzT>0){mzT-=dt;const k=Math.max(0,mzT/mzD);mzMatA.opacity=k;mzMatB.opacity=k;if(mzT<=0)mz.visible=false;}
   if(slT>=0){slT+=dt;const t=slT/slD;slMat.uniforms.head.value=Math.min(1.25,t*1.5);slMat.uniforms.op.value=t<.66?1:Math.max(0,1-(t-.66)*2.4);if(t>1.1){slT=-1;slash.visible=false;}}
@@ -12540,9 +12689,9 @@ document.addEventListener('pointerlockchange',()=>{
 document.addEventListener('pointerlockerror',()=>{if(!lockEver){lockFail=true;msg('Mouse capture is blocked here. Turn with the arrow keys or by moving the mouse.','','lf');}});
 function pause(){if(state!=='play')return;$('ctlb').hidden=!isTouch;$('stickb').hidden=!isTouch;state='pause';firing=false;resetTouch();for(const k in keys)keys[k]=0;$('pause').hidden=false;syncChatUi();}
 /* touch players can drag every control where they want it and resize it */
-const CTL={stick:'Move stick',tfire:'FIRE',troll:'SLIDE',tjump:'JUMP',tswap:'SWAP',tskill:'SKILL',tspells:'Spells',tpause:'Pause',tbag:'BOOK',tloadout:'LOADOUT',ttalk:'TALK',tchat:'CHAT',tfire2:'FIRE 2',tjump2:'JUMP 2',troll2:'SLIDE 2',tswap2:'SWAP 2',tskill2:'SKILL 2'};
+const CTL={stick:'Move stick',tfire:'FIRE',troll:'SLIDE',tjump:'JUMP',tswap:'SWAP',tskill:'SKILL',tspells:'Spells',tpause:'Pause',tbag:'BOOK',tloadout:'LOADOUT',ttalk:'TALK',tchat:'CHAT',tfire2:'FIRE 2',tjump2:'JUMP 2',troll2:'SLIDE 2',tswap2:'SWAP 2',tskill2:'SKILL 2',tscope:'SCOPE'};
 /* extra copies of buttons the player can add in Customize: default spot and size */
-const XTRA={tfire2:{x:.78,y:.64,s:1.3},tjump2:{x:.70,y:.60,s:1.2},troll2:{x:.30,y:.60,s:1.3},tswap2:{x:.76,y:.46,s:1.1},tskill2:{x:.82,y:.34,s:1.1}};
+const XTRA={tscope:{x:.70,y:.48,s:1.2},tfire2:{x:.78,y:.64,s:1.3},tjump2:{x:.70,y:.60,s:1.2},troll2:{x:.30,y:.60,s:1.3},tswap2:{x:.76,y:.46,s:1.1},tskill2:{x:.82,y:.34,s:1.1}};
 function applyCtl(){
   const W=gameEl.clientWidth,H=gameEl.clientHeight,C=meta.ctl||{};
   for(const id in CTL){const el=$(id),c=C[id];if(!el)continue;
@@ -12736,7 +12885,7 @@ function pollPad(dt){
   let gp=null,list=[];
   try{list=navigator.getGamepads?navigator.getGamepads():[];}catch(e){if(!pad.blocked){pad.blocked=true;$('padstat').textContent='This page is not allowed to read controllers. Open the installed app version to play with one.';}return;}
   for(const g of list){if(!g||!g.connected||g.buttons.length<4)continue;if(g.buttons.some(q=>q.pressed))pad.idx=g.index;if(!gp||g.index===pad.idx)gp=g;}
-  if(!gp){if(pad.on){pad.on=false;padMove.x=padMove.y=0;padFire=false;padAds=false;pad.fs=false;pad.rem=0;$('flickb').hidden=true;$('padmapb').hidden=true;$('padstat').textContent='Controller disconnected.';}return;}
+  if(!gp){if(pad.on){pad.on=false;padMove.x=padMove.y=0;padFire=false;padAds=false;pad.fs=false;pad.rem=0;$('flickb').hidden=true;$('padstat').textContent='Controller disconnected.';}return;}
   const ax=gp.axes||[],id=String(gp.id||'').toLowerCase(),std=gp.mapping==='standard';
   const xboxRaw=!std&&(/xbox|xinput|045e|microsoft/.test(id));
   if(!pad.on||pad.gid!==gp.id){pad.on=true;pad.gid=gp.id;pad.prev=[];pad.lay=null;$('flickb').hidden=false;$('padmapb').hidden=false;const info=controllerInfo(gp);pad.type=info.type;pad.name=info.name;setControllerHelp(info);
@@ -12785,6 +12934,7 @@ function pollPad(dt){
   }
   if(pad.lay!==layout){pad.lay=layout;const LN={ps:'PlayStation compatibility mapping',std:'standard mapping',xbox:'Xbox compatibility mapping',axtrig:'axis-trigger mapping',gen:'generic mapping'};$('padstat').textContent=pad.name+' connected ('+LN[layout]+').'+(layout!=='std'?' If buttons or sticks feel wrong, change Controller layout in settings.':'');padMapUi();}
   const hit=i=>b(i)&&!pad.prev[i],dz=v=>Math.abs(v)<.16?0:(v-Math.sign(v)*.16)/.84;
+  if(PBW){for(let i=0;i<16;i++)if(hit(i)&&pbTake(i))break;pad.prev=Array.from({length:17},(x,i)=>b(i));return;}
   const lx=dz(ax[SA[0]]||0),ly=dz(ax[SA[1]]||0);
   const rx=dz(ax[SA[2]]||0),ry=dz(ax[SA[3]]||0);
   if(state==='play'){
@@ -12802,13 +12952,13 @@ function pollPad(dt){
       if(!pad.fs&&mg<.62)P.pitch=clamp(P.pitch-ry*(.5+.5*Math.abs(ry))*2.3*dt*fr*sens(),-1.2,1.2);
       if(Math.abs(st)>.0001)lookIn(Math.abs(st)*.6);
     }else{P.yaw-=rx*(.5+.5*Math.abs(rx))*3.4*dt*fr*sens();P.pitch=clamp(P.pitch-ry*(.5+.5*Math.abs(ry))*2.3*dt*fr*sens(),-1.2,1.2);lookIn((Math.abs(rx)+Math.abs(ry))*2.5*dt);}}
-    padFire=b(7);padAds=false;if(hit(6)&&P.sel)cast(P.sel);if(hit(15))cycleWeapon();if(Math.hypot(lx,ly)<.3)padRun=false;else if(hit(10))padRun=!padRun;
+    padFire=PBb(b,'fire');padAds=PBb(b,'scope');if(PBh(hit,'cast')&&P.sel)cast(P.sel);if(PBh(hit,'swap'))cycleWeapon();if(Math.hypot(lx,ly)<.3)padRun=false;else if(PBh(hit,'run'))padRun=!padRun;
     /* RT fire, LT/L2 casts the selected spell, RB/R1 next spell, LB/L1 previous spell, R3 talk, D-pad up/left/down = spell slots 1-3, D-pad right = swap gun and sword */
-    if(hit(4))cycleSpell(-1);if(hit(5))cycleSpell(1);if(hit(11)&&talkTo)openShop(talkTo);if(ARM.prac&&hit(11))pracGo();
+    if(PBh(hit,'prev'))cycleSpell(-1);if(PBh(hit,'next'))cycleSpell(1);if(PBh(hit,'talk')&&talkTo)openShop(talkTo);if(ARM.prac&&PBh(hit,'talk'))pracGo();
     /* A slide, X jump, B skill, Y swap */
-    if(hit(0))tryRoll();if(hit(2))tryJump();if(hit(1)){activateCharSkill();}if(hit(3)){if(talkTo)openShop(talkTo);else cycleLoadout();}
-    for(let k=0;k<3;k++)if(hit(12+k)&&meta.bar[k]){P.sel=meta.bar[k];cast(P.sel);}
-    if(hit(9))pause();else if(hit(8))openInv();
+    if(PBh(hit,'slide'))tryRoll();if(PBh(hit,'jump'))tryJump();if(PBh(hit,'skill')){activateCharSkill();}if(PBh(hit,'loadout')){if(talkTo)openShop(talkTo);else cycleLoadout();}
+    for(let k=0;k<3;k++)if(PBh(hit,'s'+(k+1))&&meta.bar[k]){P.sel=meta.bar[k];cast(P.sel);}
+    if(PBh(hit,'pause'))pause();else if(PBh(hit,'book'))openInv();
   }else{
     padMove.x=padMove.y=0;padFire=false;padAds=false;
     const scr=[...document.querySelectorAll('.screen')].filter(e=>!e.hidden).pop();
@@ -13280,7 +13430,7 @@ function pvpScore(by,v,vn){
 function pvBalance(c){const o=Object.assign({},c);o.dr=Math.max(o.dr||1,.9);o.melee=Math.min(o.melee||1,1.1);o.gmul=Math.min(o.gmul||1,1.1);o.smul=Math.min(o.smul||1,1.1);o.spd=clamp(o.spd||1,.97,1.03);o.regen=Math.min(o.regen||1,1.2);return o;}
 function beginPvp(){
   PVP.on=true;PVP.map=MP.map;PVP.score={};PVP.ts=[0,0];PVP.over=false;PVP.out={};PVP.gain={};PVP.gl=[];PVP.streak=0;PVP.itT=8;MP.name=mpName();$('story').hidden=true;$('hud').hidden=false;$('touch').hidden=!isTouch;gameEl.classList.toggle('touchmode',isTouch);applyCtl();
-  CH=pvBalance(CHARS.find(c=>c.id===meta.char)||CHARS[0]);fixBar();if(pvMode()!=='gun')for(const id of pvSp())if(!meta.bar.includes(id))slotIn(id);
+  CH=pvBalance(CHARS.find(c=>c.id===meta.char)||CHARS[0]);if(!meta.climbBar){meta.climbBar=meta.bar.slice();meta.climbLo=JSON.parse(JSON.stringify(meta.loadouts||[]));}meta.bar=Array(9).fill(null);fixBar();if(pvMode()!=='gun')for(const id of pvSp())if(!meta.bar.includes(id))slotIn(id);
   P.floor=1;P.lvl=meta.tapLv||1;P.xp=0;P.kills=0;P.gold=0;P.fell=false;P.boon={};P.curse=0;P.att={};if((meta.scopeStyle||'classic')!=='none')P.att.scope=1;/* the optic picked in the armory is physically fitted to the gun */P.rolls=0;P.sigCd={gun:0,sword:0};P.cds={};levelSpellQueue=0;pickMode='floor';floorPickPhase='attachment';
   P.gun=mkW(Object.assign({},CH.gun,{lv:5,r:0}));P.sword=mkW(Object.assign({},CH.sword,{lv:5,r:0}));P.sta=maxSta();P.roll=0;P.slide=0;P.y=0;P.vy=0;P.tired=false;equip(pvMode()==='gun'&&P.gun?'gun':pvMode()==='magic'&&P.sword?'sword':CH.hand,true);if(isTouch)goFull();
   recompute();P.hp=P.maxHp;P.mana=P.maxMana;buildLevel(1);buildSlots();resize();state='play';lock();pvpSpawn();
@@ -13384,7 +13534,7 @@ function quitToMenu(){
   if(state!=='pause')return;
   if(!quitArm){quitArm=true;$('quit').textContent=PVP.on?'Really leave the arena?':'Really quit? Your climb is saved';return;}
   saveRun();
-  try{pvBotsClear();}catch(er){}PVP.on=false;PVP.score={};PVP.gain={};PVP.gl=[];$('map').style.display='';mpListTxt='';$('mplist').textContent='';
+  try{pvBotsClear();}catch(er){}PVP.on=false;if(meta.climbBar){meta.bar=meta.climbBar;if(meta.climbLo&&meta.climbLo.length)meta.loadouts=meta.climbLo;meta.climbBar=null;meta.climbLo=null;save();}PVP.score={};PVP.gain={};PVP.gl=[];$('map').style.display='';mpListTxt='';$('mplist').textContent='';
   quitArm=false;$('quit').textContent='Quit to main menu';$('pause').hidden=true;$('hud').hidden=true;unlock();state='title';
   P.floor=1;P.rolls=0;vig=0;$('vig').style.opacity=0;$('wardfx').style.opacity=0;$('banner').style.opacity=0;firing=false;
   buildTitleLevel();renderChars();contLabel();$('title').hidden=false;$('title').scrollTop=0;
@@ -13401,9 +13551,9 @@ function startRun(){
 function arrive(){if(MP.meet&&MP.meet.f===P.floor){const m=MP.meet;MP.meet=null;if(!blocked(m.x,m.z,.3)){P.x=m.x+1.2;P.z=m.z;P.vx=P.vz=0;P.y=0;}sfx('blink');msg('You arrive beside your teammate.','gold','ally');}after(8,()=>msg(pick(L.theme.lore),'lore'));}
 function beginRun(R){
   if(state!=='story')return;if(!R||!R.char)R=null;MP.name=mpName();$('story').hidden=true;$('hud').hidden=false;$('touch').hidden=!isTouch;gameEl.classList.toggle('touchmode',isTouch);applyCtl();
-  CH=CHARS.find(c=>c.id===meta.char)||CHARS[0];if(CH.id==='king')applyKingDefaultLoadout();fixBar();if(CH.all&&!meta.bar.slice(0,NBAR()).includes('lastgate')){meta.bar=meta.bar.filter(x=>x!=='lastgate');meta.bar.unshift('lastgate');meta.bar.length=9;fixBar();}for(const id of CH.spells){if(!CH.all&&!rk(id))meta.sk[id]=1;if(CH.id!=='king'&&!meta.bar.includes(id))slotIn(id);}if(CH.id==='king'){meta.bar=['lastgate','mend','haste',null,null,null,null,null,null];syncLoadout();}save();
+  CH=CHARS.find(c=>c.id===meta.char)||CHARS[0];if(meta.climbBar){meta.bar=meta.climbBar;if(meta.climbLo&&meta.climbLo.length)meta.loadouts=meta.climbLo;meta.climbBar=null;meta.climbLo=null;}if(!R){meta.sk={};meta.bar=Array(9).fill(null);meta.loadouts=[0,1,2].map(()=>Array(9).fill(null));meta.loadout=0;}if(CH.id==='king')applyKingDefaultLoadout();fixBar();if(CH.all&&!meta.bar.slice(0,NBAR()).includes('lastgate')){meta.bar=meta.bar.filter(x=>x!=='lastgate');meta.bar.unshift('lastgate');meta.bar.length=9;fixBar();}for(const id of CH.spells){if(!CH.all&&!rk(id))meta.sk[id]=1;if(CH.id!=='king'&&!meta.bar.includes(id))slotIn(id);}if(CH.id==='king'){meta.bar=['lastgate','mend','haste',null,null,null,null,null,null];syncLoadout();}save();
   P.gun=mkW(CH.gun);P.sword=mkW(CH.sword);P.sta=maxSta();P.roll=0;P.slide=0;P.y=0;P.vy=0;P.tired=false;equip(CH.hand,true);if(isTouch)goFull();
-  P.floor=1;P.lvl=meta.tapLv||1;meta.lv10=meta.lv20=null;P.xp=0;P.kills=0;P.gold=0;P.fell=false;P.boon={};P.curse=0;P.att={};P.rolls=0;P.sigCd={gun:0,sword:0};P.cds={};levelSpellQueue=0;pickMode='floor';floorPickPhase='attachment';recompute();P.hp=P.maxHp;P.mana=P.maxMana;
+  P.floor=1;P.lvl=meta.tapLv||1;if(!R&&meta.tapLv){meta.tapLv=0;save();}meta.lv10=meta.lv20=null;P.xp=0;P.kills=0;P.gold=0;P.fell=false;P.boon={};P.curse=0;P.att={};P.rolls=0;P.sigCd={gun:0,sword:0};P.cds={};levelSpellQueue=0;pickMode='floor';floorPickPhase='attachment';recompute();P.hp=P.maxHp;P.mana=P.maxMana;
   if(R){if(R.gun)P.gun=mkW(R.gun);if(R.sword)P.sword=mkW(R.sword);P.floor=R.floor||1;P.lvl=R.lvl||1;P.xp=R.xp||0;P.gold=R.gold||0;P.kills=R.kills||0;P.att=R.att||{};P.boon=R.boon||{};P.curse=R.curse||0;P.fell=!!R.fell;equip(R.hand||CH.hand,true);recompute();P.hp=P.maxHp;P.mana=P.maxMana;}
   buildLevel(P.floor);buildSlots();resize();state='play';lock();arrive();saveRun();
   banner('FLOOR '+P.floor,L.theme.name,2600);if(R){msg('Your climb continues from the start of floor '+P.floor+'.','good');return;}
@@ -13854,8 +14004,8 @@ const gyLabels=()=>{$('gyfx').textContent='Gyro left-right: '+(meta.gy.fx>0?'nor
 const gsUi=()=>{$('gysens').value=Math.round(meta.gy.s*100);$('gysenslab').textContent='Gyro sensitivity: '+Math.round(meta.gy.s*100)+'%';};gsUi();
 $('gysens').addEventListener('input',e=>{meta.gy.s=clamp(+e.target.value/100,.2,3);$('gysenslab').textContent='Gyro sensitivity: '+Math.round(meta.gy.s*100)+'%';});$('gysens').addEventListener('change',()=>save());
 const PML={auto:'Auto',ps:'PlayStation raw',axtrig:'Axis triggers',gen:'Generic',xbox:'Xbox raw'},PMO=['auto','ps','axtrig','gen','xbox'];
-function padMapUi(){const e=$('padmapb');if(e)e.textContent='Controller layout: '+PML[meta.padmap||'auto'];}
-$('padmapb').addEventListener('click',()=>{meta.padmap=PMO[(PMO.indexOf(meta.padmap||'auto')+1)%PMO.length];pad.lay=null;pad.prev=[];save();padMapUi();});padMapUi();
+function padMapUi(){const e=$('padmapb');if(e){e.textContent='Controller buttons';e.hidden=false;}}
+$('padmapb').addEventListener('click',()=>{openPadBind();});(()=>{padMapUi();});padMapUi();
 const MSZ={auto:'Auto',small:'Small',medium:'Medium',large:'Large',huge:'Huge'},MSO=['auto','small','medium','large','huge'];
 const mapSzGet=()=>meta.mapsz||(isTouch?'auto':'large');/* laptops and desktops start with a large minimap */
 function mapSzApply(){const c=$('map');for(const k of MSO)c.classList.remove('msz-'+k);c.classList.add('msz-'+mapSzGet());const b=$('mapszb');if(b)b.textContent='Minimap size: '+MSZ[mapSzGet()];}
@@ -13867,7 +14017,7 @@ $('ttalk').addEventListener('pointerdown',e=>{e.preventDefault();const n=talkTo;
 $('resume').addEventListener('click',resume);
 $('again').addEventListener('click',rise);
 if(isTouch){$('howto').innerHTML='<b>Left thumb</b><span>move; push all the way forward to sprint</span><b>Right thumb</b><span>drag to look</span><b>FIRE</b><span>hold to shoot, drag to aim</span><b>SWAP</b><span>gun or sword</span><b>SKILL</b><span>tap to activate your character skill when it is ready</span><b>AUTO SPEC</b><span>your weapon signature activates automatically while you shoot when it is ready and you have enough mana</span><b>SLIDE</b><span>low, fast dodge; tap again to slide-jump</span><b>Spell tiles</b><span>tap to cast</span><b>BOOK</b><span>weapons, spells, hotbar</span><b>Sideways</b><span>the game always plays in landscape</span>';}
-{save();const n=Object.values(meta.sk).reduce((a,b)=>a+b,0);$('record').textContent=(saveOk?'':'This preview cannot save to your device, so progress is lost when the page reloads. The installed app keeps it. ')+meta.best||n?'Highest floor cleared: '+meta.best+' · skill ranks kept: '+n+' · falls: '+meta.deaths:'Skills you learn on the lifts are yours forever. Levels are not.';}
+{save();const n=Object.values(meta.sk).reduce((a,b)=>a+b,0);$('record').textContent=(saveOk?'':'This preview cannot save to your device, so progress is lost when the page reloads. The installed app keeps it. ')+meta.best||n?'Highest floor cleared: '+meta.best+' · falls: '+meta.deaths:'Every climb starts fresh: level 1 and your climber\'s own spells.';}
 
 /* ---------------- frame ---------------- */
 let RW=320,RH=240,qScale=isTouch?.8:1,perfEma=16,perfHold=0,qMax=1,qGood=0,qSince=9999,spdOp=-1;

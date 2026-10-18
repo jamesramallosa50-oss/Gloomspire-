@@ -10,6 +10,17 @@ Static game: `index.html` is the whole game. No build step.
 ## Updating the game
 Replace `index.html` in the repo with the new version (on github.com: open the file, click the pencil/upload, commit).
 Vercel redeploys automatically within a minute and keeps the same link.
+## Polish update
+- **Exits never blocked**: room layouts keep a clear zone two cells deep around every door and stairway, and every floor is checked so you can walk from the start to every door and the exit. Any layout that would block a path is removed.
+- **Main menu**: a column of words on the left over the live tower scene, the GLOOMSPIRE logo bottom right. Continue, New Climb, Multiplayer, Options, How to Play and Credits each open their own page with a Back button.
+- **Touch layout**: the default layout is now the one from your screenshot. A SCOPE button can be added in Customize > Add button (not on by default); hold it to scope and fire with FIRE.
+- **Controller buttons**: Options (main menu) or the pause menu > Controller buttons. Pick an action and press the button you want: Xbox, PlayStation and other pads. Includes a Scope (hold) action, controller type and Reset.
+- **Every climb starts fresh**: level 1 and only your climber's own spells. PvP uses its own spells and no longer carries your climb spells; your climb hotbar comes back when you leave the arena.
+- **Cover props**: the blocks in rooms are now wooden crates, banded barrels and plank barricades with iron rails. They stop shots, can be climbed, and monsters walk round them.
+- **Aim assist**: from the hip it only helps within about 11 m. While scoped it reaches about 34 m, and scoped shots travel almost twice as far.
+- **Ultimates**: the one-shot sweep of the whole room is gone; each ultimate does its own thing (the 31 reworked ones still spread over the room). Ultimates keep a short opening flash.
+- **Cooldowns by strength**: 3-spell ultimates 14 to 30 s, 2-spell fusions 8 to 15 s, only on the spells you fused. Room-wide and multi-cast ones wait longest, self buffs the least.
+
 ## Single-target ultimates now take the whole room
 31 ultimates that used to hit one enemy were reworked:
 - Cast on every enemy in the room (up to 6 copies, the rest get an echo strike): Marionette Wire, Winter Chrysalis, Compound Debt, Pariah's Mark, Cold Guillotine, Clumsy Colossus, Abyssal Clutch, Crowned Carrier, Overripe, Frozen Recoil, Ticking Seedpod, Iron Embrace, Glacier Harpoon.
