@@ -78,3 +78,19 @@ Everyone in a multiplayer room needs this same version, because floor layouts ch
 - Stat badges along the bottom: climber, difficulty, best floor, falls.
 - Logo has a small pixel tower emblem and a slow ember glow; drifting fog along the floor.
 - Sub-pages fade in with a gold divider under the title.
+
+## Build 2.2
+- Victory and ending screens fit phone screens, scroll if needed, and the button answers a tap.
+- Boss health bar sits lower, with the boss name under the bar so it is never cut off.
+- The King now cycles every kind of ultimate by name: a spell, a two-spell fusion, a three-spell ultimate, then a single-spell X ultimate, walking all 77 fusions and 220 ultimates in turn.
+- Any three-spell ultimate with Haste in it is Stopped World (15 s time stop). Cast it during the King's time stop to break it.
+- Fixed projectiles staying frozen in the air after a time stop ended (the floating and glitching objects).
+- Haste + Last Gate: the first tap of Last Gate or Haste waits a moment, so a double tap starts the fusion instead of opening a gate. The floor picker opens first, the game holds, and nothing is spent until you pick; closing it refunds everything. A guard stops a finger still on the screen from picking a floor.
+- In co-op the picker has a "Teleport to a teammate" section (it says when nobody is connected).
+- New Last Gate model: stone arch with pillars and keystone, raised portcullis, braziers, swirling portal (gold, violet for floor gates); it rises out of the floor when it opens.
+
+## Build 2.3 — objects
+- Fixed surfaces flickering through each other (texture glitch), worst on phones: the camera's near plane moved from 0.05 to 0.12, which gives about 2.4x more depth precision.
+- Removed overlapping faces that fought each other: crate corner posts and edge bars, crate braces, dais and step tops and trim, camp crates, rug layers and table planks.
+- Floating lamps: the two camp lanterns now hang on chains from the ceiling. The Crown's bell (floor 51) hangs on a full chain instead of floating under a short one. Guardian-floor hanging decor uses the real ceiling height.
+- Guardian-floor decor is never placed inside crates, fences, the dais or walls.
