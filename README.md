@@ -149,3 +149,7 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 - Walls, floors and ceilings are painted at 128 px per tile instead of 32 px blown up. Walls are irregular cut stone in about 11 courses, with recessed mortar, rounded and chipped corners, bevels lit from the top left, cracks, damp streaks and moss along the joints. Floors are worn flagstones of mixed sizes with dirt in the joints. Ceilings are rough, soot-stained blocks. The dark shaft and elevated stone get their own darker variant.
 - Doors, traps and the special floors keep their art, upscaled with fine grain.
 - Texture filtering: crisp up close and mipmapped at a distance, so walls no longer shimmer.
+
+## Build 3.5
+- Sealed and exit doors no longer trust a running kill counter that could drift. On approach they count the room's living enemies directly and open when none are left. Otherwise, every 3 s they wake the survivors, mark them with red light (with a message when 3 or fewer remain) and move any that are stuck inside a crate, pillar, dais or wall to a free cell.
+- Textures made consistent: plain, mossy and dark walls share one stone layout, so faces line up at corners and between neighbours; tiles are 64 px in the same pixel scale as the doors, props and enemies; nearest filtering with mip levels, so the look is the same near and far.

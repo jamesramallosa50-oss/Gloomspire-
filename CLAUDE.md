@@ -28,7 +28,8 @@ Where things live:
 | `dun2.js` | Boss bar, trials, pressure plates, summon gacha |
 | `patch17.py` | Lighting values: torch light, ambient, fog |
 | `patch19.py` + `domshim.js` | DOM write dedupe (HUD performance) |
-| `m17.js` + `patch20.py` | Dungeon textures: walls, floors, ceilings, painted at 128 px per tile |
+| `m17.js` + `patch20.py` | Dungeon textures: walls, floors, ceilings, 64 px per tile, one shared wall layout, nearest + mip filtering |
+| `m18.js` + `patch21.py` | Sealed/exit doors count living guardians directly, mark and unstick the survivors |
 
 ## Every update must
 1. **Bump the version** everywhere it appears:
