@@ -162,3 +162,7 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 - The King of Gloomspire character's one-hit kill is restored.
 - Cutscene on the final elevator (m20.js): letterbox, your character walks onto the lift, turns back to the tower and rises in the green light, then a fade to the meadow. A Skip button ends it.
 - Golden Meadow: castle, village, path and old trees are merged into a few meshes (about 250 draw calls down to a few dozen), which pays for oaks, pines, birches, rocks, a fenced path with lantern posts, wind-swayed instanced grass, flower patches, fireflies, butterflies, two layers of horizon mountains, a sun glow and richer ground colours. Grass, flowers, trees and fireflies are reduced on touch devices.
+
+## Build 3.7 — friendlier dungeon music
+- The music generator (m19.js) now writes adventure-RPG dungeon music instead of horror: Dorian minor with a major V for cadences (no flat-II or tritone chords), triangle pads instead of detuned sawtooth drones, a constant lute/harp arpeggio, a walking bass, and a melody built as motif → answer → motif → cadence on the chord root. Calm tracks use a soft hand drum; combat and boss use a march with a harmonic-minor scale. The random high plinks and eerie choir are gone.
+- Ambience is reduced to soft water drips and torch crackle every 7-15 s; moans, rumbles, creaks, chains, wind and the cave-air noise bed are off, and the low-health heartbeat is removed.
