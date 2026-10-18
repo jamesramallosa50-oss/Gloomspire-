@@ -135,3 +135,6 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 
 ## Build 3.0
 - First update pushed straight from GitHub. The main menu shows "Build 3.0 · NEW · auto-updated from GitHub" so you can confirm the live site has it.
+
+## Build 3.1
+- Update log: an UPDATE LOG button at the bottom left of the main menu opens a page listing every update, newest first. A gold dot shows until you've read the latest one.
