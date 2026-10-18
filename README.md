@@ -10,6 +10,21 @@ Static game: `index.html` is the whole game. No build step.
 ## Updating the game
 Replace `index.html` in the repo with the new version (on github.com: open the file, click the pencil/upload, commit).
 Vercel redeploys automatically within a minute and keeps the same link.
+## Boss update (version 2.0)
+- **New models for all ten guardians**: Orc Warlord (horned helm, spiked pauldrons, cleaver and shield, cape), Brood Queen (crowned spider with glowing egg sacs), Ashmaw (long-necked drake with molten belly, wings and tail), Corvin (bell-staff lich with orbiting bells), Ooze King (layered slime with bones inside and a crown), Sir Halvard (plate knight, greatsword, tower shield), Mother Cinder (winged imp with a burning halo and tail), the Pale Choir (shroud with a ring of three masks), Gorehowl (bone giant with a glowing core and bone bow), the Bell That Wakes (cracked bell with a watching eye and chains).
+- **Smooth boss animation**: bosses turn smoothly, breathe, track you with their heads, capes and tails sway, rings and bells orbit, their glow pulses faster each phase, and the Ooze King squashes and stretches.
+- **Each phase is harder**: at two thirds and one third health the boss raises a 2 second shield, then takes 15% and then 30% less damage, hits 18% harder each time, attacks more often, and unlocks new spells: meteor rain with homing orbs (phase 2) and rotating beams you must jump or dodge (phase 2, four beams in phase 3). Each later boss also has more health and damage than the one before.
+
+## Puzzle update (version 1.9)
+- **Blocked entrances fixed for real**: corridors enter some rooms through an open gap with no door, and room layouts could put a wall or crate in that gap. Those gaps are now protected like doors.
+- **Health and mana numbers** sit on top of the bar fill again.
+- **Raised platforms** are now ritual daises: dark stone courses, an iron-trimmed top, corner posts with candles and skulls, stone steps.
+- **Spawn room** is smaller with a low ceiling; fighting rooms stay big and tall.
+- **Harder**: big rooms hold more monsters (up to 10 per room, scaled by room size) and elites are more common.
+- **Room puzzles**: Lever rooms (pull the coloured levers in the order the tablet shows; walk into, strike or shoot them) and Crystal rooms (the crystals sing a pattern, repeat it). Both reward a chest and gold, alongside the wave trials and rune plates. Single player only.
+- **Last Gate + Haste**: opens a scrolling list of every floor 1 to 51 (bosses marked) and, in co-op, a button to jump straight to each teammate.
+- **Co-op versions**: the game now tells you when you and the host run different versions, which is what makes floors differ between players. Both refresh the page.
+
 ## Polish update
 - **Exits never blocked**: room layouts keep a clear zone two cells deep around every door and stairway, and every floor is checked so you can walk from the start to every door and the exit. Any layout that would block a path is removed.
 - **Main menu**: a column of words on the left over the live tower scene, the GLOOMSPIRE logo bottom right. Continue, New Climb, Multiplayer, Options, How to Play and Credits each open their own page with a Back button.
@@ -55,3 +70,11 @@ Vercel redeploys automatically within a minute and keeps the same link.
 - **Fixes**: the final boss no longer errors when he casts Orb, fusing Last Gate with Haste and stepping through a Gate of Ascension no longer throw, and the title backdrop no longer crashes when a room reconnects during a match.
 
 Everyone in a multiplayer room needs this same version, because floor layouts changed.
+
+## Build 2.1 — main menu polish
+- Menu items slide in one after another; the selected item glows gold with a ▸ marker and a one-line description.
+- Arrow keys / W S to move, Enter to open, Esc or Backspace to go back; a soft tick plays on each move.
+- CONTINUE shows who you were climbing as, the floor and the level.
+- Stat badges along the bottom: climber, difficulty, best floor, falls.
+- Logo has a small pixel tower emblem and a slow ember glow; drifting fog along the floor.
+- Sub-pages fade in with a gold divider under the title.
