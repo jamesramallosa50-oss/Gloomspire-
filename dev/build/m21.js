@@ -347,12 +347,13 @@ function hzTouch(u){
 function hzInputOnce(){
   if(window.__hzIn)return;window.__hzIn=1;
   /* the climb's touch layout drives the horror modes: its buttons are relabelled and routed here */
+  document.addEventListener('click',e=>{if(HZ&&HZ.paused&&e.target&&e.target.id==='ctlb')hzSkin(false);},true);
   document.addEventListener('pointerdown',e=>{if(state!=='horror'||!HZ)return;const b=e.target&&e.target.closest&&e.target.closest('#touch button');if(!b)return;const id=b.id;
     if(id==='tfire'||id==='tfire2')return;e.preventDefault();e.stopPropagation();
     if(id==='tpause'){hzPause(true);return;}if(!hzLook())return;const run=HZ.mode==='run',k=id.replace(/2$/,'');
     if(k==='troll'){if(run)HZ.kSlide=1;else HZ.pl.crouch=!HZ.pl.crouch;}else if(k==='tjump')HZ.kJump=1;else if(k==='tskill')HZ.kWard=1;
     else if(k==='tswap')HZ.kThrow=1;else if(k==='tloadout')HZ.kLan=1;else if(k==='tbag')HZ.kSen=1;else if(k==='ttalk')HZ.kAct=1;},true);
-  addEventListener('keydown',e=>{if(state!=='horror'||!HZ||e.repeat)return;
+  addEventListener('keydown',e=>{if(state==='pause'&&HZ&&HZ.paused&&!e.repeat&&e.code==='Escape'){hzPause(false);return;}if(state!=='horror'||!HZ||e.repeat)return;
     if(e.code==='Escape'||e.code==='KeyP'){if(!HZ.dead)hzPause(!HZ.paused);}
     if(e.code==='Space'){e.preventDefault();HZ.kJump=1;}
     if(e.code==='KeyC'||e.code==='ControlLeft'){if(HZ.mode==='run')HZ.kSlide=1;else HZ.pl.crouch=!HZ.pl.crouch;}
@@ -361,10 +362,18 @@ function hzInputOnce(){
   document.addEventListener('pointerlockchange',()=>{if(state==='horror'&&HZ&&!HZ.dead&&!HZ.paused&&!isTouch&&document.pointerLockElement!==$('view')&&HZ.lockedOnce)hzPause(true);if(document.pointerLockElement===$('view')&&HZ)HZ.lockedOnce=1;});
   $('view').addEventListener('click',()=>{if(state==='horror'&&HZ&&!HZ.paused&&!HZ.dead&&!isTouch&&document.pointerLockElement!==$('view'))try{$('view').requestPointerLock();}catch(_){}});
 }
-function hzPause(on){
-  if(!HZ||HZ.dead||HZ.loading)return;HZ.paused=on;const o=$('hzover');o.classList.toggle('on',on);$('hzot').textContent='PAUSED';$('hzot').className='';
-  $('hzop').textContent=HZ.mode==='hide'?'Relics '+HZ.keys+' of 5 · '+hsClock(HZ.t):Math.floor(HZ.dist)+' m so far';$('hzres').style.display='';
-  if(on){try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}}else if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
+function hzPause(on){/* 3.14: the climb's own pause screen, with every setting, plus TRY AGAIN */
+  const H=HZ;if(!H||H.dead||H.loading||H.won)return;if(!!H.paused===!!on)return;H.paused=on;
+  const ps=$('pause'),sub=ps&&ps.querySelector('p.dim'),ui=$('hzui');
+  let rb=$('hzretry');if(!rb&&ps){rb=document.createElement('button');rb.id='hzretry';rb.type='button';rb.textContent='Try again';rb.hidden=true;rb.addEventListener('click',()=>{if(HZ)hzQuit(true);});ps.insertBefore(rb,$('quit'));}
+  if(on){try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}
+    firing=false;try{resetTouch();}catch(_){}for(const k in keys)keys[k]=0;padRun=false;
+    if(sub){if(sub.dataset.hzT==null)sub.dataset.hzT=sub.textContent;sub.textContent=H.mode==='hide'?'Relics '+H.keys+' of 5 · '+hsClock(H.t):Math.floor(H.dist)+' m so far · best '+Math.floor(meta.hzBest||0)+' m';}
+    $('ctlb').hidden=!isTouch;$('stickb').hidden=!isTouch;if(rb)rb.hidden=false;if(ui)ui.style.visibility='hidden';
+    state='pause';ps.hidden=false;if(H.drone&&AC)H.drone.out.gain.setTargetAtTime(.015,AC.currentTime,.3);}
+  else{ps.hidden=true;if(sub&&sub.dataset.hzT!=null){sub.textContent=sub.dataset.hzT;delete sub.dataset.hzT;}if(rb)rb.hidden=true;if(ui)ui.style.visibility='';
+    try{quitArm=false;$('quit').textContent='Quit to main menu';}catch(_){}
+    state='horror';H.lastNow=0;hzSkin(true);hzHud(true);if(!isTouch)try{$('view').requestPointerLock();}catch(_){}}
 }
 let HZM='run';
 function hzLook(){return state==='horror'&&!!HZ&&!HZ.paused&&!HZ.dead&&!HZ.loading&&!HZ.won;}
@@ -385,8 +394,10 @@ function hzSkin(on){/* relabel the player's own touch buttons for the horror mod
       const S=HZSKIN[HZ.mode],lab=S.show[el.id];if(lab!=null){el.textContent=lab;}if(S.hide.includes(el.id))el.hidden=true;}
     else if(el.dataset.hzL!=null){el.innerHTML=el.dataset.hzL;el.hidden=el.dataset.hzH==='1';delete el.dataset.hzL;delete el.dataset.hzH;}}
   const sp=$('tspells');if(sp)sp.style.visibility=on?'hidden':'';
-  const hud=$('hud');if(hud){hud.classList.toggle('hzmode',!!on);hud.hidden=!on;}
-  if(on){t.hidden=!isTouch;gameEl.classList.toggle('touchmode',!!isTouch);try{applyCtl();}catch(_){}for(const el of t.querySelectorAll('button'))if(HZSKIN[HZ.mode].hide.includes(el.id))el.hidden=true;}
+}
+function hzHud(on){/* show only the touch controls of the HUD */
+  const t=$('touch'),hud=$('hud');if(hud){hud.classList.toggle('hzmode',!!on);hud.hidden=!on;}
+  if(on){t.hidden=!isTouch;gameEl.classList.toggle('touchmode',!!isTouch);try{applyCtl();}catch(_){}if(HZ)for(const el of t.querySelectorAll('button'))if(HZSKIN[HZ.mode].hide.includes(el.id))el.hidden=true;}
   else{t.hidden=true;try{resetTouch();}catch(_){}}
 }
 async function horStart(mode){
@@ -406,7 +417,7 @@ async function horStart(mode){
   if(!HZ)return;
   hzBuild();
   const ld=$('hzload');if(ld)ld.remove();
-  HZ.loading=false;HZ.paused=false;P.yaw=HZ.pl.yaw;P.pitch=0;P.as=null;padRun=false;try{resetTouch();}catch(_){}hzSkin(true);
+  HZ.loading=false;HZ.paused=false;P.yaw=HZ.pl.yaw;P.pitch=0;P.as=null;padRun=false;try{resetTouch();}catch(_){}hzSkin(true);hzHud(true);
   if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
   if(HZ.mode==='hide'){hzSay('HIDE',2.2);hzTip('Find 5 relics · it is listening',4);}else{hzSay('RUN',2.2);hzRoar(.6);}
 }
@@ -441,7 +452,7 @@ function hzQuit(again){
   if(H&&H.scene){for(const C of H.chunks)if(!C.dead)hzDropChunk(C);if(HZA&&HZA.root.parent)HZA.root.parent.remove(HZA.root);
     try{H.scene.traverse(o=>{if(o.geometry&&o.geometry!==H.box&&!(HZA&&o===HZA.mesh))o.geometry.dispose();});for(const k in H.mat){const m=H.mat[k];if(m.map)m.map.dispose();m.dispose();}H.box.dispose();H.spikeG.dispose();H.bladeG.dispose();H.potG.dispose();if(H.dm.mix)H.dm.mix.stopAllAction();}catch(_){}}
   hzAmbStop();try{for(const m of H.writ||[]){m.map.dispose();m.dispose();}}catch(_){}
-  try{hzSkin(false);}catch(_){}
+  try{hzSkin(false);hzHud(false);}catch(_){}try{$('pause').hidden=true;const rb=$('hzretry');if(rb)rb.hidden=true;const sub=$('pause').querySelector('p.dim');if(sub&&sub.dataset.hzT!=null){sub.textContent=sub.dataset.hzT;delete sub.dataset.hzT;}$('quit').textContent='Quit to main menu';quitArm=false;const ui=$('hzui');if(ui)ui.style.visibility='';}catch(_){}
   HZ=null;
   const u=$('hzui');if(u)u.remove();const st=$('hzst');if(st)st.remove();
   if(again){state='title';horStart(HZM);return;}

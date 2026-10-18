@@ -12346,7 +12346,7 @@ function fx2Cast(hex){
   crT=0;castRing.visible=true;crMat.color.setHex(hex);crCore.material.color.setHex(hex);castRing.position.set(-.26,-.22,-.6);
   ringFx(P.x,P.z,.3,1.7,hex,.35,.06);}
 /* ===== ROOM PUZZLES, GATE PICKER, VERSION CHECK ===== */
-const GSV='3.13';
+const GSV='3.14';
 /* ---------- Last Gate + Haste: pick any floor 1-51 from a scroll list, or jump to a teammate ---------- */
 function openGatePick(){
   let S=$('gatepick');
@@ -13758,12 +13758,13 @@ function hzTouch(u){
 function hzInputOnce(){
   if(window.__hzIn)return;window.__hzIn=1;
   /* the climb's touch layout drives the horror modes: its buttons are relabelled and routed here */
+  document.addEventListener('click',e=>{if(HZ&&HZ.paused&&e.target&&e.target.id==='ctlb')hzSkin(false);},true);
   document.addEventListener('pointerdown',e=>{if(state!=='horror'||!HZ)return;const b=e.target&&e.target.closest&&e.target.closest('#touch button');if(!b)return;const id=b.id;
     if(id==='tfire'||id==='tfire2')return;e.preventDefault();e.stopPropagation();
     if(id==='tpause'){hzPause(true);return;}if(!hzLook())return;const run=HZ.mode==='run',k=id.replace(/2$/,'');
     if(k==='troll'){if(run)HZ.kSlide=1;else HZ.pl.crouch=!HZ.pl.crouch;}else if(k==='tjump')HZ.kJump=1;else if(k==='tskill')HZ.kWard=1;
     else if(k==='tswap')HZ.kThrow=1;else if(k==='tloadout')HZ.kLan=1;else if(k==='tbag')HZ.kSen=1;else if(k==='ttalk')HZ.kAct=1;},true);
-  addEventListener('keydown',e=>{if(state!=='horror'||!HZ||e.repeat)return;
+  addEventListener('keydown',e=>{if(state==='pause'&&HZ&&HZ.paused&&!e.repeat&&e.code==='Escape'){hzPause(false);return;}if(state!=='horror'||!HZ||e.repeat)return;
     if(e.code==='Escape'||e.code==='KeyP'){if(!HZ.dead)hzPause(!HZ.paused);}
     if(e.code==='Space'){e.preventDefault();HZ.kJump=1;}
     if(e.code==='KeyC'||e.code==='ControlLeft'){if(HZ.mode==='run')HZ.kSlide=1;else HZ.pl.crouch=!HZ.pl.crouch;}
@@ -13772,10 +13773,18 @@ function hzInputOnce(){
   document.addEventListener('pointerlockchange',()=>{if(state==='horror'&&HZ&&!HZ.dead&&!HZ.paused&&!isTouch&&document.pointerLockElement!==$('view')&&HZ.lockedOnce)hzPause(true);if(document.pointerLockElement===$('view')&&HZ)HZ.lockedOnce=1;});
   $('view').addEventListener('click',()=>{if(state==='horror'&&HZ&&!HZ.paused&&!HZ.dead&&!isTouch&&document.pointerLockElement!==$('view'))try{$('view').requestPointerLock();}catch(_){}});
 }
-function hzPause(on){
-  if(!HZ||HZ.dead||HZ.loading)return;HZ.paused=on;const o=$('hzover');o.classList.toggle('on',on);$('hzot').textContent='PAUSED';$('hzot').className='';
-  $('hzop').textContent=HZ.mode==='hide'?'Relics '+HZ.keys+' of 5 · '+hsClock(HZ.t):Math.floor(HZ.dist)+' m so far';$('hzres').style.display='';
-  if(on){try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}}else if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
+function hzPause(on){/* 3.14: the climb's own pause screen, with every setting, plus TRY AGAIN */
+  const H=HZ;if(!H||H.dead||H.loading||H.won)return;if(!!H.paused===!!on)return;H.paused=on;
+  const ps=$('pause'),sub=ps&&ps.querySelector('p.dim'),ui=$('hzui');
+  let rb=$('hzretry');if(!rb&&ps){rb=document.createElement('button');rb.id='hzretry';rb.type='button';rb.textContent='Try again';rb.hidden=true;rb.addEventListener('click',()=>{if(HZ)hzQuit(true);});ps.insertBefore(rb,$('quit'));}
+  if(on){try{if(document.pointerLockElement)document.exitPointerLock();}catch(_){}
+    firing=false;try{resetTouch();}catch(_){}for(const k in keys)keys[k]=0;padRun=false;
+    if(sub){if(sub.dataset.hzT==null)sub.dataset.hzT=sub.textContent;sub.textContent=H.mode==='hide'?'Relics '+H.keys+' of 5 · '+hsClock(H.t):Math.floor(H.dist)+' m so far · best '+Math.floor(meta.hzBest||0)+' m';}
+    $('ctlb').hidden=!isTouch;$('stickb').hidden=!isTouch;if(rb)rb.hidden=false;if(ui)ui.style.visibility='hidden';
+    state='pause';ps.hidden=false;if(H.drone&&AC)H.drone.out.gain.setTargetAtTime(.015,AC.currentTime,.3);}
+  else{ps.hidden=true;if(sub&&sub.dataset.hzT!=null){sub.textContent=sub.dataset.hzT;delete sub.dataset.hzT;}if(rb)rb.hidden=true;if(ui)ui.style.visibility='';
+    try{quitArm=false;$('quit').textContent='Quit to main menu';}catch(_){}
+    state='horror';H.lastNow=0;hzSkin(true);hzHud(true);if(!isTouch)try{$('view').requestPointerLock();}catch(_){}}
 }
 let HZM='run';
 function hzLook(){return state==='horror'&&!!HZ&&!HZ.paused&&!HZ.dead&&!HZ.loading&&!HZ.won;}
@@ -13796,8 +13805,10 @@ function hzSkin(on){/* relabel the player's own touch buttons for the horror mod
       const S=HZSKIN[HZ.mode],lab=S.show[el.id];if(lab!=null){el.textContent=lab;}if(S.hide.includes(el.id))el.hidden=true;}
     else if(el.dataset.hzL!=null){el.innerHTML=el.dataset.hzL;el.hidden=el.dataset.hzH==='1';delete el.dataset.hzL;delete el.dataset.hzH;}}
   const sp=$('tspells');if(sp)sp.style.visibility=on?'hidden':'';
-  const hud=$('hud');if(hud){hud.classList.toggle('hzmode',!!on);hud.hidden=!on;}
-  if(on){t.hidden=!isTouch;gameEl.classList.toggle('touchmode',!!isTouch);try{applyCtl();}catch(_){}for(const el of t.querySelectorAll('button'))if(HZSKIN[HZ.mode].hide.includes(el.id))el.hidden=true;}
+}
+function hzHud(on){/* show only the touch controls of the HUD */
+  const t=$('touch'),hud=$('hud');if(hud){hud.classList.toggle('hzmode',!!on);hud.hidden=!on;}
+  if(on){t.hidden=!isTouch;gameEl.classList.toggle('touchmode',!!isTouch);try{applyCtl();}catch(_){}if(HZ)for(const el of t.querySelectorAll('button'))if(HZSKIN[HZ.mode].hide.includes(el.id))el.hidden=true;}
   else{t.hidden=true;try{resetTouch();}catch(_){}}
 }
 async function horStart(mode){
@@ -13817,7 +13828,7 @@ async function horStart(mode){
   if(!HZ)return;
   hzBuild();
   const ld=$('hzload');if(ld)ld.remove();
-  HZ.loading=false;HZ.paused=false;P.yaw=HZ.pl.yaw;P.pitch=0;P.as=null;padRun=false;try{resetTouch();}catch(_){}hzSkin(true);
+  HZ.loading=false;HZ.paused=false;P.yaw=HZ.pl.yaw;P.pitch=0;P.as=null;padRun=false;try{resetTouch();}catch(_){}hzSkin(true);hzHud(true);
   if(!isTouch)try{$('view').requestPointerLock();}catch(_){}
   if(HZ.mode==='hide'){hzSay('HIDE',2.2);hzTip('Find 5 relics · it is listening',4);}else{hzSay('RUN',2.2);hzRoar(.6);}
 }
@@ -13852,7 +13863,7 @@ function hzQuit(again){
   if(H&&H.scene){for(const C of H.chunks)if(!C.dead)hzDropChunk(C);if(HZA&&HZA.root.parent)HZA.root.parent.remove(HZA.root);
     try{H.scene.traverse(o=>{if(o.geometry&&o.geometry!==H.box&&!(HZA&&o===HZA.mesh))o.geometry.dispose();});for(const k in H.mat){const m=H.mat[k];if(m.map)m.map.dispose();m.dispose();}H.box.dispose();H.spikeG.dispose();H.bladeG.dispose();H.potG.dispose();if(H.dm.mix)H.dm.mix.stopAllAction();}catch(_){}}
   hzAmbStop();try{for(const m of H.writ||[]){m.map.dispose();m.dispose();}}catch(_){}
-  try{hzSkin(false);}catch(_){}
+  try{hzSkin(false);hzHud(false);}catch(_){}try{$('pause').hidden=true;const rb=$('hzretry');if(rb)rb.hidden=true;const sub=$('pause').querySelector('p.dim');if(sub&&sub.dataset.hzT!=null){sub.textContent=sub.dataset.hzT;delete sub.dataset.hzT;}$('quit').textContent='Quit to main menu';quitArm=false;const ui=$('hzui');if(ui)ui.style.visibility='';}catch(_){}
   HZ=null;
   const u=$('hzui');if(u)u.remove();const st=$('hzst');if(st)st.remove();
   if(again){state='title';horStart(HZM);return;}
@@ -14665,7 +14676,7 @@ function buildCoverProps(){
  const it=(id,p,label,sub)=>'<button type="button"'+(id?' id="'+id+'"':'')+(p?' data-p="'+p+'"':'')+(id==='mmcont'?' hidden':'')+'>'+label+'<small>'+sub+'</small></button>';
  mm.innerHTML='<div id="mmfog"></div><div id="mmside"><nav id="mmnav">'+it('mmcont','','CONTINUE','')+it('','modes','GAME MODES','Classic, Horror, Hide & Seek')+it('','climb','NEW CLIMB','Choose who climbs and how hard')+it('','mp','MULTIPLAYER','Climb together or fight in the arena')+it('','opt','OPTIONS','Graphics, full screen, controller buttons')+it('','how','HOW TO PLAY','Controls, fusions and ultimates')+it('','cred','CREDITS','Who built the tower')+'</nav></div>'+
    '<div id="mmlogo"><svg viewBox="0 0 16 24" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="4" height="2" fill="#ff9426"/><rect x="5" y="2" width="6" height="4" fill="#3a3630"/><rect x="7" y="3" width="2" height="2" fill="#ffd24a"/><rect x="4" y="6" width="8" height="6" fill="#4a463e"/><rect x="7" y="8" width="2" height="2" fill="#ffb040"/><rect x="3" y="12" width="10" height="6" fill="#3e3a34"/><rect x="5" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="9" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="2" y="18" width="12" height="6" fill="#2e2a26"/><rect x="7" y="20" width="2" height="4" fill="#0a0806"/></svg><div><b>GLOOMSPIRE</b><i>EVERY FLOOR IS LOCKED</i></div></div>'+
-   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 3.13</div><button type="button" id="mmlogb">▤ UPDATE LOG<i id="mmlogdot"></i></button></div>';
+   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 3.14</div><button type="button" id="mmlogb">▤ UPDATE LOG<i id="mmlogdot"></i></button></div>';
  TI.appendChild(mm);
  const page=(id,title)=>{const d=document.createElement('div');d.className='mmpage';d.id='mmp-'+id;d.innerHTML='<div class="mmhead"><button type="button" class="mmback">◀ BACK</button><h2>'+title+'</h2></div>';TI.appendChild(d);return d;};
  const mv=(d,ids)=>{for(const id of ids){const e=typeof id==='string'?$(id):id;if(e)d.appendChild(e);}};
@@ -14678,7 +14689,8 @@ function buildCoverProps(){
  {const G=gmModes();pG.insertAdjacentHTML('beforeend','<div id="gmgrid">'+G.map(m=>'<button type="button" class="gmcard" data-gm="'+m.id+'"><span class="gmpic" style="background-image:url('+m.pic+')"><em>'+m.tag+'</em></span><b>'+m.t+'</b><small>'+m.d+'</small></button>').join('')+'</div>');
   pG.querySelectorAll('.gmcard').forEach(b=>b.addEventListener('click',()=>{try{sfx('key');}catch(e){}const id=b.dataset.gm;if(id==='classic')go('climb');else if(id==='horror')horStart('run');else if(id==='hide')horStart('hide');}));}
  pK.insertAdjacentHTML('beforeend','<div id="mmcred"><p><b style="color:#ffd890">GLOOMSPIRE</b></p><p>A tower of stacked stone. Every floor is locked, every lift goes up, and every death drops you down the shaft.</p><p>Built in the browser with three.js. Music and sound are made live in Web Audio.</p><p>Thank you for climbing.</p></div>');
- {const LOGV='3.13',UL=[
+ {const LOGV='3.14',UL=[
+   ['3.14','18 Oct 2026',['Pausing Horror or Hide & Seek now opens the same pause screen as the normal game, with every setting: sound, music, screen flashes, graphics, full screen, joystick, customize touch controls, look sensitivity, field of view, gyro and controller buttons. It also has a Try again button and shows how far you got.']],
    ['3.13','18 Oct 2026',['Horror and Hide & Seek now use all your settings from the normal game: your own touch layout (where you placed and sized each button), the stick mode, look sensitivity, field of view, phone gyro aiming, graphics quality, the reduce-flashes option, and your controller with its button mapping and flick stick.','The touch buttons are renamed for each mode. Horror: SPRINT, SLIDE, JUMP, WARD. Hide & Seek: SPRINT (BREATH while hiding), CROUCH, THROW, WARD, LIGHT, SENSE, and the TALK button becomes HIDE or LEAVE next to a wardrobe.','Controller: jump, slide, skill (ward), cast or talk (hide), swap (throw), loadout (light), next or previous spell (sense), fire (sprint or hold breath) and pause.']],
    ['3.12','18 Oct 2026',['New jumpscare sound: when the demon catches you in Horror or Hide & Seek you now hear a real recorded scream.']],
    ['3.11','18 Oct 2026',['Horror: you can SLIDE now (C, or the SLIDE button). Slide under swinging blades and under the new guillotines that slam down to waist height.','Horror: new cracked floors that collapse a moment after you step on them. Keep running, or jump the hole once it falls.','Horror: new pickups. Holy water stuns the demon when it is close (E or WARD), and adrenaline gives you 5 seconds of endless sprint. You start with one holy water.','Horror: the dungeon fights back. Every so often the LIGHTS GO OUT, the demon becomes ENRAGED, or everything goes SILENT. Traps get more frequent the further you run, and every 250 m you heal a little.','Hide & Seek: two of the seven relics are CURSED. Taking one screams for the demon. SENSE only ever points to the true ones.','Hide & Seek: taking a relic can bring a curse: the lights die, the demon learns where you are, or it gets faster for a while.','Hide & Seek: throw stones (G or THROW) to make a noise somewhere else and lead the demon away. Find more stones around the dungeon.','Hide & Seek: holy candles (R or WARD) stun the demon when it is close. Hold your breath in a wardrobe (hold Space, or the HOLD BREATH button): if it is right outside it can hear you breathe, and if it opens your wardrobe while you hold your breath it will not see you. Unless it watched you get in.']],
@@ -14845,7 +14857,7 @@ function ctlOwn(id){meta.ctl=meta.ctl||{};if(!meta.ctl[id]){const b=ctlBox(id);m
 function openCtl(){if(state!=='pause')return;$('pause').hidden=true;$('touch').hidden=false;ctlTalk=$('ttalk').hidden;$('ttalk').hidden=false;$('tchat').hidden=false;gameEl.classList.add('ctledit');$('ctled').hidden=false;applyCtl();ctlPick(null);syncChatUi();}
 function closeCtl(){$('ctled').hidden=true;gameEl.classList.remove('ctledit');$('ttalk').hidden=ctlTalk;ctlPick(null);save();applyCtl();if(state==='pause')$('pause').hidden=false;syncChatUi();}
 function ctlSize(d){if(!ctlSel)return;const c=ctlOwn(ctlSel);c.s=clamp(Math.round((c.s+d)*10)/10,.5,2.2);applyCtl();ctlPick(ctlSel);}
-function resume(){quitArm=false;$('quit').textContent='Quit to main menu';$('pause').hidden=true;state='play';lock();syncChatUi();}
+function resume(){if(HZ&&HZ.paused){hzPause(false);return;}quitArm=false;$('quit').textContent='Quit to main menu';$('pause').hidden=true;state='play';lock();syncChatUi();}
 let invSel=null,invFz=null,invTap={id:null,t:0};
 /* grimoire fusion preview: double-tap a spell then another for a pair, triple-tap then two more for an ultimate */
 const ELFX={fire:'burns',frost:'slows and can freeze',arcane:'hits 20% harder',force:'staggers',arc:'arcs to a nearby foe',blood:'heals you a little',venom:'poisons',spirit:'sometimes hits double',void:'pulls foes inward',time:'slows',guard:'feeds your ward',life:'heals you'};
@@ -15670,6 +15682,7 @@ function mpTick(dt){
 }
 let quitArm=false;
 function quitToMenu(){
+  if(HZ){hzQuit(false);return;}
   if(state!=='pause')return;
   if(!quitArm){quitArm=true;$('quit').textContent=PVP.on?'Really leave the arena?':'Really quit? Your climb is saved';return;}
   saveRun();

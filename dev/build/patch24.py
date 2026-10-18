@@ -13,4 +13,7 @@ rep("  if(state==='play'&&mvId===null){const sb=ctlBox('stick');","  if((state==
 rep("  if(state==='play'||state==='ending')e.preventDefault();\n},{passive:false});","  if(state==='play'||state==='ending'||state==='horror')e.preventDefault();\n},{passive:false});")
 rep("  const rx=dz(ax[SA[2]]||0),ry=dz(ax[SA[3]]||0);\n  if(state==='play'){","  const rx=dz(ax[SA[2]]||0),ry=dz(ax[SA[3]]||0);\n  if(state==='horror'&&HZ&&HZ.paused&&!HZ.loading&&!HZ.dead&&(hit(0)||hit(9))){hzPause(false);pad.prev=Array.from({length:17},(x,i)=>b(i));return;}\n  if(state==='play'||hzLook()){")
 rep("    padFire=PBb(b,'fire');padAds=PBb(b,'scope');if(PBh(hit,'cast')&&P.sel)cast(P.sel);","    if(state==='horror'){hzPad(b,hit,lx,ly);pad.prev=Array.from({length:17},(x,i)=>b(i));return;}\n    padFire=PBb(b,'fire');padAds=PBb(b,'scope');if(PBh(hit,'cast')&&P.sel)cast(P.sel);")
+# 3.14: pausing a horror mode opens the climb's own pause screen with all its settings
+rep("function resume(){quitArm=false;","function resume(){if(HZ&&HZ.paused){hzPause(false);return;}quitArm=false;")
+rep("function quitToMenu(){\n  if(state!=='pause')return;","function quitToMenu(){\n  if(HZ){hzQuit(false);return;}\n  if(state!=='pause')return;")
 open(p,'w',encoding='utf-8').write(s);print('p24 ok')
