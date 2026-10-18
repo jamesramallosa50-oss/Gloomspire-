@@ -138,3 +138,6 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 
 ## Build 3.1
 - Update log: an UPDATE LOG button at the bottom left of the main menu opens a page listing every update, newest first. A gold dot shows until you've read the latest one.
+
+## Build 3.2
+- Lighting toned down to keep the dungeon mood: torch light 1.38 (was 1.75; 1.12 before 2.8), reach 24 m, the campfire at spawn at 62% light, ambient 2.1 with only a slight warm lift, and fog from 7.5 to 58 m.
