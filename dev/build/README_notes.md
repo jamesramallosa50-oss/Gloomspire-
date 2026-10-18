@@ -144,3 +144,8 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 
 ## Build 3.3
 - Darker: ambient 1.6 (1.9 originally) with no warm lift; torches back to their original 1.1 glow, 21 m reach and falloff; the spawn campfire at 50%; fog from 5 to 50 m.
+
+## Build 3.4 — dungeon textures
+- Walls, floors and ceilings are painted at 128 px per tile instead of 32 px blown up. Walls are irregular cut stone in about 11 courses, with recessed mortar, rounded and chipped corners, bevels lit from the top left, cracks, damp streaks and moss along the joints. Floors are worn flagstones of mixed sizes with dirt in the joints. Ceilings are rough, soot-stained blocks. The dark shaft and elevated stone get their own darker variant.
+- Doors, traps and the special floors keep their art, upscaled with fine grain.
+- Texture filtering: crisp up close and mipmapped at a distance, so walls no longer shimmer.

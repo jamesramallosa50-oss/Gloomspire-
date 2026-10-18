@@ -28,6 +28,7 @@ Where things live:
 | `dun2.js` | Boss bar, trials, pressure plates, summon gacha |
 | `patch17.py` | Lighting values: torch light, ambient, fog |
 | `patch19.py` + `domshim.js` | DOM write dedupe (HUD performance) |
+| `m17.js` + `patch20.py` | Dungeon textures: walls, floors, ceilings, painted at 128 px per tile |
 
 ## Every update must
 1. **Bump the version** everywhere it appears:
