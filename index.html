@@ -4452,6 +4452,7 @@ function buildLevel0(f){
   L.rooms.forEach(r=>{if(r.idx===L.start||r.idx===L.special)return;if(Math.random()<.3+Math.min(.3,f*.04)){const n=ri(1,2+Math.min(3,f>>1));for(let i=0;i<n;i++){const c=roomCell(r);addTrap(c.x,c.y);}}});
   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const k=y*W+x;if(g[k]===1&&L.roomOf[k]<0&&Math.random()<.03+Math.min(.04,f*.005)){
     if(g[k-1]!==2&&g[k+1]!==2&&g[k-W]!==2&&g[k+W]!==2&&g[k-W]<3&&g[k+W]<3)addTrap(x,y);}}
+  try{secretCarve(f);}catch(e){console.warn('secret',e);L.secret=null;}
   /* geometry */
   const pos=[],uv=[],nor=[],col=[],tallK=k=>L.roomOf[k]>=0&&(!!L.tallAll&&L.roomOf[k]!==L.start||(L.boss||L.tall)&&L.roomOf[k]===L.exit);
   /* sh: brightness per corner (baked shade). uf: [u from,u to,v from,v to] as fractions of the tile, for pieces smaller than a cell */
@@ -4524,6 +4525,7 @@ function buildLevel0(f){
     const m=new T.Mesh(doorGeo[d.type],doorMats[d.type]);m.position.set(wx(d.x),WALLH/2,wx(d.y));if(d.axis==='x')m.rotation.y=Math.PI/2;
     lvl.add(m);d.mesh=m;L.doorAt[d.y*W+d.x]=d;
   });
+  try{secretSetup();}catch(e){console.warn('secret2',e);}
   /* lift platforms */
   (L.pmap?[]:[L.sStub,L.eStub]).forEach((s,i)=>{
     for(const cx of[-1,1])for(const cz of[-1,1]){const ch=new T.Mesh(geo(.07,18,.07),ironMat);ch.position.set(wx(s.x)+cx*1.25,9,wx(s.y)+cz*1.25);lvl.add(ch);}
@@ -5164,7 +5166,7 @@ function mapStatic(){
   const startRoom=L.rooms[L.start];
   const inSpawn=(cx,cy)=>startRoom&&cx>=startRoom.x0&&cx<=startRoom.x1&&cy>=startRoom.y0&&cy<=startRoom.y1;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){const k=y*W+x;if(!explored[k])continue;const gr=L.grid[k];if(gr!==3&&(inSpawn(x,y)||(L.spawnHall&&L.spawnHall.has(k))||(L.sStub&&L.sStub.door&&k===L.sStub.door.y*W+L.sStub.door.x)))continue;
-    if(gr===2){const d=L.doorAt[k];g.fillStyle=d.open>.5?'#5a5a50':d.type==='shut'?'#525a50':d.type==='key'?'#e6b53a':d.type==='seal'?'#b8181d':d.type==='exit'?'#ff9426':'#8a6038';}
+    if(gr===2){const d=L.doorAt[k];if(d.type==='secret'&&d.open<.5)continue;g.fillStyle=d.open>.5?'#5a5a50':d.type==='shut'?'#525a50':d.type==='key'?'#e6b53a':d.type==='seal'?'#b8181d':d.type==='exit'?'#ff9426':'#8a6038';}
     else{if(gr===4)continue;g.fillStyle=gr===3?'#ff9426':L.roomOf[k]>=0?(TP&&L.entered&&L.entered.has(L.roomOf[k])&&L.roomOf[k]!==L.start?'#a98aff':'#6f7a6c'):'#525a50';}
     cell(x,y);}
   const ins=Math.max(1,Math.round(s*.22));
@@ -11861,6 +11863,7 @@ function updEnemies(dt){
 
 /* ---------------- world update ---------------- */
 function updWorld(dt){
+  try{secretTick(dt);dimTick(dt);}catch(e){}
   /* doors */
   let flowDirty=false;
   for(const d of L.doors){
@@ -11869,7 +11872,8 @@ function updWorld(dt){
     if(d.open>0)continue;
     const dx=wx(d.x)-P.x,dz=wx(d.y)-P.z;
     if(dx*dx+dz*dz<2.7*2.7){
-      if(d.type==='normal')openDoor(d);
+      if(d.type==='secret'){}
+      else if(d.type==='normal')openDoor(d);
       else if(d.type==='shut')msg('Barred behind you. The only way is up.','bad','shut');
       else if(d.type==='key'){if(P.keys>0){P.keys--;openDoor(d);msg('The lock turns.','gold');sfx('key');}else{if(!L.needKey)L.needKey=time;msg('Locked. It needs an iron key.','bad','key');if(time-(d.t||-9)>2.5){d.t=time;sfx('locked');}}}
       else if(d.type==='seal'){msg('Blood-sealed. Slay every guardian of the last chamber ('+L.rooms[d.req].alive+' left).','bad','seal');if(time-(d.t||-9)>2.5){d.t=time;sfx('locked');}}
@@ -11994,11 +11998,11 @@ function updPlayer(dt){
       if(P.fireQ){P.fireQT-=dt;if(P.fireQT<=0){P.fireQ=false;P.scopeFire=false;}else if(P.fireCd<=0&&P.roll<=0){P.fireQ=false;fireWeapon();P.scopeFire=false;}}
     }else{if(P._pa)P.scopeFire=false;P.holdT=0;P.ads=Math.max(0,(P.ads||0)-dt/adsOut);P.scoped=false;P.fireQ=false;if(fH&&P.fireCd<=0&&P.roll<=0)fireWeapon();}
     P._pa=pa;
-    const ads=P.ads||0,baseFov=(P.fovK>0?100:P.roll>0?92:P.slide>0?88:run?84:74)+((meta.fov||74)-74);
+    const ads=P.ads||0,baseFov=(P.fovK>0?100:P.roll>0?92:P.slide>0?88:run?84:74)+((meta.fov||74)-74)*(cam.aspect>1.6?.5:.8);
     /* CS:GO/CODM: scoped guns zoom harder; iron-sight ADS is milder */
     const hasOptic=attW('scope',curW()&&curW().c)>0&&meta.scopeStyle!=='none';/* lens scope only when the Marksman Scope attachment is fitted (sniper too); otherwise iron sights */
     const aimFov=hasOptic?(snp?22:({rifle:30,crossbow:28,revolver:34,rpg:32}[w0&&w0.c]||36)):40;
-    const tf=hasOptic?baseFov:baseFov+(aimFov-baseFov)*ads;
+    const tf=Math.min(hasOptic?baseFov:baseFov+(aimFov-baseFov)*ads,cam.aspect>1.6?100:112);
     if(P.snapAds){P.snapAds=false;cam.fov=tf;cam.updateProjectionMatrix();}else if(Math.abs(cam.fov-tf)>.05){cam.fov+=(tf-cam.fov)*Math.min(1,dt*14);cam.updateProjectionMatrix();}
     /* Scope overlay only when looking through an optic (sniper / Marksman Scope) — CS:GO AWP / CODM style */
     const sx=$('scopefx');
@@ -12334,7 +12338,7 @@ function fx2Cast(hex){
   crT=0;castRing.visible=true;crMat.color.setHex(hex);crCore.material.color.setHex(hex);castRing.position.set(-.26,-.22,-.6);
   ringFx(P.x,P.z,.3,1.7,hex,.35,.06);}
 /* ===== ROOM PUZZLES, GATE PICKER, VERSION CHECK ===== */
-const GSV='2.6';
+const GSV='2.7';
 /* ---------- Last Gate + Haste: pick any floor 1-51 from a scroll list, or jump to a teammate ---------- */
 function openGatePick(){
   let S=$('gatepick');
@@ -12668,7 +12672,7 @@ function addChandelier(x,z){
   for(let i=0;i<6;i++){const a=i/6*6.283+.26,cx=Math.cos(a)*.78,cz=Math.sin(a)*.78;put(geo(.78,.04,.04),IR2,Math.cos(a)*.39,hy+.02,Math.sin(a)*.39,0,-a,0);
     put(cyl(.075,.05,.07,6),BR,cx,hy+.06,cz);put(cyl(.032,.032,.2,6),WAX,cx,hy+.19,cz);
     const f1=new T.Mesh(cyl(0,.045,.13,5),flameMat),f2=new T.Mesh(cyl(0,.025,.09,4),flameMat2);f1.position.set(cx,hy+.36,cz);f2.position.set(cx,hy+.34,cz);grp.add(f1);grp.add(f2);fls.push(f1,f2);}
-  const m=new T.Mesh(chandMerge(parts),PROPMAT);grp.add(m);
+  const m=new T.Mesh(chandMerge(parts),PROPMAT);m.userData.own=1;grp.add(m);
   const hl=new T.Mesh(SPHG,torchHalo);hl.position.set(0,hy+.3,0);hl.scale.setScalar(.42);grp.add(hl);
   grp.position.set(x,0,z);lvl.add(grp);torches.push({x,z,g:grp,fl:fls[0],fls,hl:null,sy:hy+.3,d:0,ph:rnd(10),chand:true});}
 function addChandeliers(){
@@ -12685,7 +12689,7 @@ function addChandeliers(){
    are merged into one mesh, the cobwebs into another, so it costs a couple of draw calls plus the candle flames. */
 const WEBMAT=new T.MeshBasicMaterial({color:0xd8d6cc,transparent:true,opacity:.32,side:T.DoubleSide,depthWrite:false});
 function dungeonDressing(){
-  if(!L||!L.rooms||PVP.on)return;const W=L.W,H=L.H,grid=L.grid,parts=[],webs=[],flames=[],fl=[];
+  DIMS=[];if(!L||!L.rooms||PVP.on)return;const W=L.W,H=L.H,grid=L.grid,parts=[],webs=[],flames=[],fl=[];
   const m4=new T.Matrix4(),q=new T.Quaternion(),e3=new T.Euler(),one=new T.Vector3(1,1,1),v3=new T.Vector3();
   let F=null;/* current local frame: a matrix for the piece being built */
   const add=(arr,geom,hex,x,y,z,rx,ry,rz)=>{e3.set(rx||0,ry||0,rz||0);q.setFromEuler(e3);const lm=new T.Matrix4().compose(v3.set(x,y,z),q,one);arr.push([geom,hex,new T.Matrix4().multiplyMatrices(F,lm)]);};
@@ -12693,7 +12697,7 @@ function dungeonDressing(){
   const flame=(x,y,z)=>{const p=new T.Vector3(x,y,z).applyMatrix4(F);flames.push(p);};
   const th=L.theme||{},tint=th.tint||0xffffff,IR=0x2e2c30,IR2=0x46424a,WD=0x5a3a1c,WD2=0x3e2814,STN=0x6a6660,STN2=0x55524c,BONE=0xd8d0b8,WAX=0xe8dcc0,CL=[0x6a1a1e,0x2a3a6a,0x2a5a32,0x5a2a6a][(P.floor*7)%4];
   const used=[];const near=(x,z,r)=>used.some(u=>Math.hypot(u[0]-x,u[1]-z)<r);
-  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;return false;};
+  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;if(L.secret&&L.secret.tx!=null&&Math.hypot(L.secret.tx-x,L.secret.tz-z)<r+1.8)return true;return false;};
   const open=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&grid[y*W+x]!==0;
   /* pieces, built in a frame where the wall is behind (z=0) and +z points into the room */
   const P_={
@@ -12722,7 +12726,7 @@ function dungeonDressing(){
   };
   const pieces=['shackles','banner','shelf','table','candles','skulls','rubble','candles','shackles','skulls'];
   let cages=0;
-  for(const r of L.rooms){if(r.idx===L.start)continue;const area=(r.x1-r.x0+1)*(r.y1-r.y0+1),want=Math.max(2,Math.min(7,Math.round(area/9)));
+  for(const r of L.rooms){if(r.idx===L.start)continue;const area=(r.x1-r.x0+1)*(r.y1-r.y0+1),want=Math.max(2,Math.min(meta.quality==='low'?4:7,Math.round(area/(meta.quality==='low'?14:9))));
     /* wall-side spots: a room cell with a wall on one side */
     const spots=[],corners=[];
     for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++){if(!open(x,y))continue;const k=y*W+x;if(L.cover&&L.cover[k])continue;const ws=[];
@@ -12745,12 +12749,12 @@ function dungeonDressing(){
     /* a hanging cage in a few big rooms, away from the walls */
     if(cages<2&&area>=24&&Math.random()<.35){const x=wx(r.x0+1)+.8,z=wx(r.y1-1)-.8;if(!blockedBy(x,z,1)&&!near(x,z,2.5)&&!solidAt(x,z)&&!torches.some(t=>t.chand&&Math.hypot(t.x-x,t.z-z)<3)){F=new T.Matrix4().makeTranslation(x,0,z);try{P_.cage(ceilAt(x,z));cages++;used.push([x,z]);}catch(e){}}}
   }
-  if(parts.length){const m=new T.Mesh(chandMerge(parts),PROPMAT);m.userData.own=1;lvl.add(m);}
-  if(webs.length){const m=new T.Mesh(chandMerge(webs),WEBMAT);m.userData.own=1;lvl.add(m);}
+  if(parts.length)addChunked(parts,PROPMAT);
+  if(webs.length)addChunked(webs,WEBMAT);
   /* candle flames: merged a room's worth at a time (two draw calls), culled with distance like torches, never taking a torch light */
   if(flames.length){const g1=cyl(0,.042,.13,5),g2=cyl(0,.024,.085,4),id=new T.Quaternion();for(let i=0;i<flames.length;i+=10){const fs=flames.slice(i,i+10),a1=[],a2=[];let sx=0,sz=0;
       for(const p of fs){a1.push([g1,0,new T.Matrix4().compose(p,id,one)]);a2.push([g2,0,new T.Matrix4().compose(new T.Vector3(p.x,p.y-.015,p.z),id,one)]);sx+=p.x;sz+=p.z;}
-      const g=new T.Group();g.add(new T.Mesh(chandMerge(a1),flameMat));g.add(new T.Mesh(chandMerge(a2),flameMat2));lvl.add(g);torches.push({x:sx/fs.length,z:sz/fs.length,g,fl:null,fls:[],hl:null,sy:1,d:0,ph:rnd(10),dim:true});}}
+      const g=new T.Group();{const m1=new T.Mesh(chandMerge(a1),flameMat),m2=new T.Mesh(chandMerge(a2),flameMat2);m1.userData.own=m2.userData.own=1;g.add(m1);g.add(m2);}lvl.add(g);DIMS.push({x:sx/fs.length,z:sz/fs.length,g});}}
 }
 
 /* ===== BUILD 2.6: more dungeon: beams, buttresses, wall furniture, floor details ===== */
@@ -12768,7 +12772,7 @@ function dungeonDressing2(){
   const IR=0x2e2c30,IR2=0x46424a,WD=0x5a3a1c,WD2=0x3e2814,WD3=0x4a2e16,STN=0x6a6660,STN2=0x55524c,STN3=0x48443e,BONE=0xd8d0b8,WAX=0xe8dcc0,SACK=0x8a7a5a,SACK2=0x6e6044;
   const open=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&grid[y*W+x]!==0;
   const prev=(L.dress||[]).map(d=>[d.x,d.z]),used=prev.slice();const near=(x,z,r)=>used.some(u=>Math.hypot(u[0]-x,u[1]-z)<r);
-  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(!t.dim&&Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;return false;};
+  const blockedBy=(x,z,r)=>{for(const p of L.plats||[])if(x>p.x0-r&&x<p.x1+r&&z>p.z0-r&&z<p.z1+r)return true;for(const t of torches)if(!t.dim&&Math.hypot(t.x-x,t.z-z)<r+.4)return true;for(const d of L.doors||[])if(Math.hypot(wx(d.x)-x,wx(d.y)-z)<r+1.6)return true;if(L.secret&&L.secret.tx!=null&&Math.hypot(L.secret.tx-x,L.secret.tz-z)<r+1.8)return true;return false;};
   /* wall furniture, built with the wall at z=0 and the room at +z */
   const WP={
     rack(){B(1.5,.07,.08,WD2,0,1.75,.08);B(1.5,.07,.08,WD2,0,.55,.08);for(const s of[-.7,.7])B(.08,1.7,.1,WD,s,.85,.08);
@@ -12820,11 +12824,78 @@ function dungeonDressing2(){
     if(Math.random()<.5){const [cx_,cy_]=cells[nf]||cells[0]||[r.x0,r.y0],x=wx(cx_)+rr(-.8,.8),z=wx(cy_)+rr(-.8,.8),ceil=ceilAt(x,z);if(!blockedBy(x,z,.5)&&!torches.some(t=>t.chand&&Math.hypot(t.x-x,t.z-z)<2)){
       F=new T.Matrix4();const n2=2+((Math.random()*2)|0);for(let c=0;c<n2;c++){const ox=x+rr(-.4,.4),oz=z+rr(-.4,.4),bot=Math.max(2.6,ceil-rr(.8,1.7));for(let k=0,y=ceil;y>bot;y-=.15,k++)B(.03,.16,k%2?.065:.02,IR,ox,y-.075,oz,0,k%2?1.57:0,0);B(.03,.2,.03,IR2,ox,bot-.1,oz);B(.14,.03,.03,IR2,ox+.06,bot-.2,oz);}}}
   }
-  if(parts.length){const m=new T.Mesh(chandMerge(parts),PROPMAT);m.userData.own=1;lvl.add(m);}
-  for(const k in dec)if(dec[k].length){const m=new T.Mesh(chandMerge(dec[k]),DECMAT[k]);m.userData.own=1;m.renderOrder=1;lvl.add(m);}
+  if(parts.length)addChunked(parts,PROPMAT);
+  if(meta.quality!=='low')for(const k in dec)if(dec[k].length)addChunked(dec[k],DECMAT[k],1);
   if(flames.length){const g1=cyl(0,.042,.13,5),g2=cyl(0,.024,.085,4),id=new T.Quaternion(),a1=[],a2=[];for(const p of flames){a1.push([g1,0,new T.Matrix4().compose(p,id,one)]);a2.push([g2,0,new T.Matrix4().compose(new T.Vector3(p.x,p.y-.015,p.z),id,one)]);}
-    const g=new T.Group();g.add(new T.Mesh(chandMerge(a1),flameMat));g.add(new T.Mesh(chandMerge(a2),flameMat2));lvl.add(g);}
+    const g=new T.Group();{const m1=new T.Mesh(chandMerge(a1),flameMat),m2=new T.Mesh(chandMerge(a2),flameMat2);m1.userData.own=m2.userData.own=1;g.add(m1);g.add(m2);}lvl.add(g);let sx=0,sz=0;for(const p of flames){sx+=p.x;sz+=p.z;}DIMS.push({x:sx/flames.length,z:sz/flames.length,g,far:1});}
 }
+
+/* ===== BUILD 2.7: cullable set dressing, secret passages ===== */
+/* merged meshes are split into 6 m chunks so the line-of-sight culler can skip the ones behind walls */
+const CHK=6;
+function addChunked(parts,mat,ro){const by=new Map();for(const p of parts){const m=p[2].elements,k=Math.floor(m[12]/CHK)+','+Math.floor(m[14]/CHK);let a=by.get(k);if(!a)by.set(k,a=[]);a.push(p);}
+  for(const a of by.values()){const m=new T.Mesh(chandMerge(a),mat);m.userData.own=1;if(ro)m.renderOrder=ro;lvl.add(m);}}
+function splitGeomChunks(g,mat){const P_=g.attributes.position.array,N_=g.attributes.normal.array,C_=g.attributes.color.array,U_=g.attributes.uv.array,by=new Map();
+  for(let t=0;t<P_.length/9;t++){const o=t*9,cx=(P_[o]+P_[o+3]+P_[o+6])/3,cz=(P_[o+2]+P_[o+5]+P_[o+8])/3,k=Math.floor(cx/CHK)+','+Math.floor(cz/CHK);let a=by.get(k);if(!a)by.set(k,a=[]);a.push(t);}
+  for(const ts of by.values()){const p=[],n=[],c=[],u=[];for(const t of ts){for(let i=0;i<9;i++){p.push(P_[t*9+i]);n.push(N_[t*9+i]);c.push(C_[t*9+i]);}for(let i=0;i<6;i++)u.push(U_[t*6+i]);}
+    const gg=new T.BufferGeometry();gg.setAttribute('position',new T.Float32BufferAttribute(p,3));gg.setAttribute('normal',new T.Float32BufferAttribute(n,3));gg.setAttribute('color',new T.Float32BufferAttribute(c,3));gg.setAttribute('uv',new T.Float32BufferAttribute(u,2));
+    const m=new T.Mesh(gg,mat);m.userData.own=1;lvl.add(m);}}
+/* candle flames hide with distance, checked a few times a second instead of being sorted with the torches every frame */
+let DIMS=[],dimT=0;
+function dimTick(dt){dimT-=dt;if(dimT>0||!DIMS.length)return;dimT=.25;for(const d of DIMS)if(!d.far)d.g.visible=Math.hypot(d.x-P.x,d.z-P.z)<30;}
+
+/* ---------- secret passages: a wall slab hides a small vault; a loose book or a skull lever nearby opens it ---------- */
+function secretCarve(f){
+  L.secret=null;if(PVP.on||f<1||Math.random()>.55)return;const W=L.W,H=L.H,g=L.grid,ro=L.roomOf;
+  const solid=(x,y)=>x>=1&&y>=1&&x<W-1&&y<H-1&&g[y*W+x]===0;
+  const R=L.rooms.filter(r=>r.idx!==L.start&&r.idx!==L.exit&&r.idx!==L.special).sort(()=>Math.random()-.5);
+  for(const r of R){const cand=[];
+    for(let y=r.y0;y<=r.y1;y++)for(let x=r.x0;x<=r.x1;x++)for(const [dx,dy] of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const px=-dy,py=dx;/* lateral */if(L.cover&&L.cover[y*W+x])continue;
+      let ok=true;for(let s=1;s<=5&&ok;s++)for(let l=-2;l<=2&&ok;l++){const cx=x+dx*s+px*l,cy=y+dy*s+py*l;if(s===1&&l!==0&&Math.abs(l)===2)continue;if(!solid(cx,cy))ok=false;}
+      /* the trigger goes on the wall of the next room cell along */
+      const tx=x+px,ty=y+py,t2x=x-px,t2y=y-py;let tr=null;
+      if(ok){if(tx>=r.x0&&tx<=r.x1&&ty>=r.y0&&ty<=r.y1&&solid(tx+dx,ty+dy))tr={x:tx,y:ty};else if(t2x>=r.x0&&t2x<=r.x1&&t2y>=r.y0&&t2y<=r.y1&&solid(t2x+dx,t2y+dy))tr={x:t2x,y:t2y};}
+      if(ok&&tr)cand.push({x,y,dx,dy,px,py,tr});}
+    if(!cand.length)continue;const c=cand[(Math.random()*cand.length)|0];
+    const vault=[];for(let s=2;s<=4;s++)for(let l=-1;l<=1;l++){const cx=c.x+c.dx*s+c.px*l,cy=c.y+c.dy*s+c.py*l,k=cy*W+cx;g[k]=1;ro[k]=-1;vault.push(k);}
+    const dk=(c.y+c.dy)*W+(c.x+c.dx);g[dk]=2;
+    if(!doorGeo.secret){const gg=tileBox(CELL,WALLH,.4,0),pa=gg.attributes.position,col=new Float32Array(pa.count*3);for(let i=0;i<pa.count;i++){const k=pa.getY(i)<0?.64:1;col[i*3]=col[i*3+1]=col[i*3+2]=k;}gg.setAttribute('color',new T.BufferAttribute(col,3));doorGeo.secret=gg;doorMats.secret=levelMat;}
+    const d={x:c.x+c.dx,y:c.y+c.dy,axis:c.dx?'x':'z',type:'secret',req:-1,open:0,opening:false};L.doors.push(d);
+    L.secret={d,room:r.idx,x:c.x,y:c.y,dx:c.dx,dy:c.dy,px:c.px,py:c.py,tr:c.tr,vault,found:false,near:0,hint:false,kind:Math.random()<.5?'book':'skull',tx:wx(c.tr.x)+c.dx*.9,tz:wx(c.tr.y)+c.dy*.9};return;}
+}
+function secretSetup(){
+  const S=L.secret;if(!S||!S.d.mesh)return;const d=S.d;
+  /* the slab sits flush with the room's wall so it reads as wall */
+  d.mesh.position.x=wx(d.x)-S.dx*1.28;d.mesh.position.z=wx(d.y)-S.dy*1.28;
+  /* the trigger, on the neighbouring wall: a bookshelf with one red book pulled proud, or a skull plaque with a lever jaw */
+  const nx=-S.dx,nz=-S.dy,px=wx(S.tr.x)+S.dx*1.5,pz=wx(S.tr.y)+S.dy*1.5,G=new T.Group(),M=new Model();G.add(M.g);
+  M.g.position.set(px,0,pz);M.g.rotation.y=Math.atan2(nx,nz);
+  if(S.kind==='book'){const WD=0x5a3a1c,WD2=0x3e2814,BK=[0x6a1a1e,0x2a3a6a,0x2a5a32,0x7a5a2a,0x4a2a5a];
+    M.b(.07,2.05,.42,WD2,-.62,1.025,.21);M.b(.07,2.05,.42,WD2,.62,1.025,.21);M.b(1.24,2.0,.03,0x2a1a0e,0,1.0,.02);for(const y of[.04,.62,1.2,1.78,2.04])M.b(1.3,.05,.42,WD,0,y,.21);
+    for(const y0 of[.065,.645,1.225,1.805])for(let x=-.56;x<.5;){const w=.06+Math.random()*.06,h=.3+Math.random()*.14;if(!(y0===1.225&&Math.abs(x)<.08))M.b(w,h,.28,BK[(Math.random()*5)|0],x+w/2,y0+h/2,.22);x+=w+.01;}
+    S.lever=M.piv(0,1.225,.36);M.b(.08,.38,.28,0xa8181d,0,.19,-.06,S.lever);M.b(.085,.04,.2,0xd8b04a,0,.3,-.06,S.lever,GLOW);}
+  else{M.b(.9,.9,.1,0x48443e,0,1.55,.05);M.b(1,.1,.14,0x55524c,0,2.04,.07);M.b(1,.1,.14,0x55524c,0,1.06,.07);M.b(.34,.3,.3,0xd8d0b8,0,1.62,.2);
+    for(const s of[-1,1])M.b(.08,.07,.02,0x9aff6a,s*.08,1.66,.355,null,GLOW);M.b(.12,.04,.02,0x1a1612,0,1.56,.355);
+    S.lever=M.piv(0,1.48,.2);M.b(.26,.08,.24,0xc8c0a8,0,-.04,.04,S.lever);for(const s of[-1,1])M.cy(.03,.03,.5,0x46424a,s*.36,1.55,.12,null,null,6);}
+  for(const t of torches.slice())if(!t.chand&&Math.hypot(t.x-px,t.z-pz)<1.6){lvl.remove(t.g);torches.splice(torches.indexOf(t),1);}
+  lvl.add(G);S.g=G;S.tx=px+nx*.6;S.tz=pz+nz*.6;S.nx=nx;S.nz=nz;
+  /* the vault: candles, a skeleton slumped against the back wall, a heap of coins, and the loot */
+  const vx=wx(S.x+S.dx*3),vz=wx(S.y+S.dy*3);
+  prop(vx,vz,Math.atan2(nx,nz),Q=>{for(const s of[-1,1]){Q.cy(.05,.06,.5,0xe8dcc0,s*1.1,.25,-1.1,null,null,6);Q.b(.06,.12,.06,0xffd060,s*1.1,.56,-1.1,null,GLOW);}
+    for(let i=0;i<14;i++)Q.cy(.07,.07,.03,0xf0c040,(Math.random()-.5)*.9,.02+i*.012,.9+(Math.random()-.5)*.6,null,GLOW,8);Q.b(.22,.18,.2,0xd8d0b8,-.9,.45,-1.15);Q.b(.4,.5,.18,0xc8c0a8,-.9,.2,-1.2);});
+  addItem('chest',vx+S.px*.9,vz+S.py*.9);items[items.length-1].bonus=true;addItem('hp',vx-S.px*1.1,vz-S.py*1.1);addItem('mp',vx-S.px*1.1+S.dx*.8,vz-S.py*1.1+S.dy*.8);addItem('ore',vx+S.dx*.9,vz+S.dy*.9);
+}
+function secretOpen(net){const S=L&&L.secret;if(!S||S.found)return;S.found=true;S.anim=0;openDoor(S.d,true);sfx('door');sfx('seal');shake=Math.max(shake,.35);
+  banner('SECRET PASSAGE',S.kind==='book'?'The bookcase was a lever':'The skull was a lever',2200);msg('Stone grinds against stone. A hidden vault opens in the wall.','gold','secret');
+  burst(wx(S.d.x)-S.dx*1.4,2,wx(S.d.y)-S.dy*1.4,40,[.75,.7,.62],3,1,1,true);meta.secrets=(meta.secrets||0)+1;save();
+  if(!net&&MP.on&&!PVP.on)try{mpSend({t:'sec',f:P.floor});}catch(e){}}
+function secretTick(dt){const S=L&&L.secret;if(!S||!S.g||state!=='play')return;
+  if(S.found){if(S.lever&&S.anim<1){S.anim=Math.min(1,S.anim+dt*3);S.lever.rotation.x=(S.kind==='book'?.55:.8)*S.anim;}if(Math.random()<dt*8&&S.d.open<1)spark(wx(S.d.x)-S.dx*1.4+(Math.random()-.5)*2.6,Math.random()*3,wx(S.d.y)-S.dy*1.4,0,-1,0,.8,[.7,.66,.6],1);return;}
+  const dx=S.tx-P.x,dz=S.tz-P.z,d=Math.hypot(dx,dz);
+  if(d<4.5&&!S.hint){S.hint=true;msg(S.kind==='book'?'One red book sits a little proud of the shelf...':'The skull\'s eyes glow, and its jaw hangs loose like a handle...','lore','sechint');}
+  const a=aimDir(),fa=(dx*a.x+dz*a.z)/(d||1);
+  if(d<1.9&&fa>.55){S.near+=dt;if(S.near>.12&&S.near-dt<=.12)msg('Pull it?','lore','secpull');if(S.near>.7)secretOpen();}else S.near=0;}
 
 /* ===== DUNGEON PACK: boss rework, wave trials, rune plates, weapon summons ===== */
 /* ---------- shared HUD (inside #hud, so menus always cover it) ---------- */
@@ -13072,7 +13143,7 @@ function buildCoverProps(){
       for(let k=0;k<5;k++){const t=(k+.5)/5-.5;box(cx+ax*t*L0,y0+h+.12,cz+az*t*L0,.05,.24,.05,IRON2);}}
   }
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
-  const m=new T.Mesh(g,PROPMAT);m.userData.own=1;lvl.add(m);
+  try{splitGeomChunks(g,PROPMAT);}catch(e){const m=new T.Mesh(g,PROPMAT);m.userData.own=1;lvl.add(m);}
 }
 
 /* ---------- main menu: a column of words over the tower, like a proper game menu ---------- */
@@ -13110,7 +13181,7 @@ function buildCoverProps(){
  const it=(id,p,label,sub)=>'<button type="button"'+(id?' id="'+id+'"':'')+(p?' data-p="'+p+'"':'')+(id==='mmcont'?' hidden':'')+'>'+label+'<small>'+sub+'</small></button>';
  mm.innerHTML='<div id="mmfog"></div><div id="mmside"><nav id="mmnav">'+it('mmcont','','CONTINUE','')+it('','climb','NEW CLIMB','Choose who climbs and how hard')+it('','mp','MULTIPLAYER','Climb together or fight in the arena')+it('','opt','OPTIONS','Graphics, full screen, controller buttons')+it('','how','HOW TO PLAY','Controls, fusions and ultimates')+it('','cred','CREDITS','Who built the tower')+'</nav></div>'+
    '<div id="mmlogo"><svg viewBox="0 0 16 24" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="4" height="2" fill="#ff9426"/><rect x="5" y="2" width="6" height="4" fill="#3a3630"/><rect x="7" y="3" width="2" height="2" fill="#ffd24a"/><rect x="4" y="6" width="8" height="6" fill="#4a463e"/><rect x="7" y="8" width="2" height="2" fill="#ffb040"/><rect x="3" y="12" width="10" height="6" fill="#3e3a34"/><rect x="5" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="9" y="14" width="2" height="2" fill="#ff8a2a"/><rect x="2" y="18" width="12" height="6" fill="#2e2a26"/><rect x="7" y="20" width="2" height="4" fill="#0a0806"/></svg><div><b>GLOOMSPIRE</b><i>EVERY FLOOR IS LOCKED</i></div></div>'+
-   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 2.6</div></div>';
+   '<div id="mmfoot"><div id="mmrec"></div><div id="mmstats"></div><div id="mmhint">↑ ↓ choose · Enter open · Esc back</div><div id="mmbuild">Gloomspire · Build 2.7</div></div>';
  TI.appendChild(mm);
  const page=(id,title)=>{const d=document.createElement('div');d.className='mmpage';d.id='mmp-'+id;d.innerHTML='<div class="mmhead"><button type="button" class="mmback">◀ BACK</button><h2>'+title+'</h2></div>';TI.appendChild(d);return d;};
  const mv=(d,ids)=>{for(const id of ids){const e=typeof id==='string'?$(id):id;if(e)d.appendChild(e);}};
@@ -13654,6 +13725,7 @@ function mpRecv(o,conn){
     {const w=o.w,ok=Array.isArray(w)&&CLS[w[0]]&&CLS[w[0]].vars[w[1]|0]&&RAR[w[2]|0],wk=ok?w.slice(0,6).join(','):'';if(wk!==g.wk){g.wk=wk;g.wNew=true;}}
     const c=CHARS.some(q=>q.id===o.c)?o.c:'james';if(g.c!==c){g.c=c;if(g.M){scene.remove(g.M.g);g.M=null;}g.fw=g.halo=g.tbelt=null;g.wNew=true;}}
   else if(o.t==='f'){if(state==='play'&&o.f===P.floor&&projs.length<140&&PK[o.k])shootProj({kind:o.k,from:'g',x:+o.x,y:+o.y,z:+o.z,dx:+o.dx,dy:+o.dy,dz:+o.dz,spd:Math.min(160,+o.s||40),life:Math.min(2,+o.l||1),dmg:0});const g=MP.others[o.id];if(g)g.fireT=.12;}
+  else if(o.t==='sec'){if(!PVP.on&&o.f===P.floor)try{secretOpen(true);}catch(e){}}
   else if(o.t==='gate'){if(!PVP.on&&state==='play'&&o.f===P.floor&&isFinite(+o.x)&&isFinite(+o.z)&&!blocked(+o.x,+o.z,.2))openGate(+o.x,+o.z,+o.y||0,false,String(o.id),o.to);}
   else if(o.t==='ev'){if(state==='play')msg(String(o.m).slice(0,80),'lore');}
   else if(o.t==='bye'){if(!MP.host&&MP.hostId&&o.id===MP.hostId)MP._hostLeft=1;mpDrop(o.id);}
