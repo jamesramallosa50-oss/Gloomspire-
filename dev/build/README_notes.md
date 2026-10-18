@@ -132,3 +132,6 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 - The level's walls, floors and ceilings were one mesh drawn every frame. They are now 9 m chunks that frustum and wall culling can skip.
 - Shaders for the level and common effects are compiled while the floor loads instead of mid-fight.
 - Result in the test: about 1.5× more frames at full resolution, and about 2× more on the CPU side alone (median frame 67–83 ms → 17–33 ms at 4× slowdown).
+
+## Build 3.0
+- First update pushed straight from GitHub. The main menu shows "Build 3.0 · NEW · auto-updated from GitHub" so you can confirm the live site has it.
