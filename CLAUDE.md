@@ -30,6 +30,8 @@ Where things live:
 | `patch19.py` + `domshim.js` | DOM write dedupe (HUD performance) |
 | `m17.js` + `patch20.py` | Dungeon textures: walls, floors, ceilings, 64 px per tile, one shared wall layout, nearest + mip filtering |
 | `m18.js` + `patch21.py` | Sealed/exit doors count living guardians directly, mark and unstick the survivors |
+| `m19.js` + `patch22.py` | Sound: background pause, generative music (`mzTracks`), extra sound effects, ambience (`sndTick`) |
+| `m20.js` + `patch22.py` | Floor 51 King fixes (`bossArm`, `kingHeal`), final-elevator cutscene (`endCutStart`), Golden Meadow scenery (`meadowPlus`) |
 
 ## Every update must
 1. **Bump the version** everywhere it appears:

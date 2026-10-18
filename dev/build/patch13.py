@@ -14,8 +14,7 @@ rep("l.position.set(t.x,1.9,t.z);","l.position.set(t.x,t.chand?t.sy:1.9,t.z);")
 # Stopped World: your shots leave the barrel, travel a short way, and hang in the air (visible) until time resumes
 rep("      if(p.spd0==null){p.spd0=p.spd;p.life0=p.life-p.age;}\n      p.spd=0;\n      if(p.m)p.m.position.set(p.x,p.y,p.z);",
     "      if(p.spd0==null){p.spd0=p.spd;p.life0=p.life-p.age;}\n      if(TS&&p.from==='p'){if(p.tsd==null)p.tsd=p.age<.06?1.6:0;if(p.tsd>0){const st=Math.min(p.tsd,(p.spd0||0)*dt);const nx=p.x+p.dx*st,nz=p.z+p.dz*st;if(solidAt(nx,nz))p.tsd=0;else{p.x=nx;p.y+=p.dy*st;p.z=nz;p.tsd-=st;}}if(p.m)p.m.visible=true;}\n      p.spd=0;\n      if(p.m)p.m.position.set(p.x,p.y,p.z);")
-# the King's crown no longer kills everything in one hit
-rep("if(!net&&CH.id==='king')dmg=1e9;","if(!net&&CH.id==='king')dmg*=e.boss?1.35:1.9;")
+# (3.6) the King's one-hit kill is back, as in the original game
 # guns in the climb hit for less
 rep("dmg:base*((S.blast||pel)?","dmg:(PVP.on?1:.78)*base*((S.blast||pel)?")
 # aim assist: a narrower cone and shorter reach from the hip, a gentle pull, and shots bend only when you are nearly on target
