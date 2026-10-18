@@ -1,5 +1,5 @@
 /* ===== ROOM PUZZLES, GATE PICKER, VERSION CHECK ===== */
-const GSV='3.2';
+const GSV='3.3';
 /* ---------- Last Gate + Haste: pick any floor 1-51 from a scroll list, or jump to a teammate ---------- */
 function openGatePick(){
   let S=$('gatepick');

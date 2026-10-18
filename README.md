@@ -141,3 +141,6 @@ Tested as a low-end phone: CPU slowed 4×, 800×360 touch screen, a fight on flo
 
 ## Build 3.2
 - Lighting toned down to keep the dungeon mood: torch light 1.38 (was 1.75; 1.12 before 2.8), reach 24 m, the campfire at spawn at 62% light, ambient 2.1 with only a slight warm lift, and fog from 7.5 to 58 m.
+
+## Build 3.3
+- Darker: ambient 1.6 (1.9 originally) with no warm lift; torches back to their original 1.1 glow, 21 m reach and falloff; the spawn campfire at 50%; fog from 5 to 50 m.
