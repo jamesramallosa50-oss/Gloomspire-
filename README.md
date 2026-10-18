@@ -10,19 +10,31 @@ Static game: `index.html` is the whole game. No build step.
 ## Updating the game
 Replace `index.html` in the repo with the new version (on github.com: open the file, click the pencil/upload, commit).
 Vercel redeploys automatically within a minute and keeps the same link.
-## What changed in this version (combat effects)
-- **Gunfire**: a muzzle flash on the barrel with a light pop, sparks and a puff of smoke, spent shells that fly out to the right and stay on the floor (red ones for shotguns), stretched tracer tails on bullets, sparks off walls, and blood sprayed out behind whatever you hit. Heavy guns kick the screen a little.
-- **Melee**: a slash arc sweeps across the view in your blade's rarity colour, alternating sides each swing. Hits throw a white impact star (gold on crits), a fan of sparks and blood in the swing direction, and freeze the game for a few frames.
-- **Spells**: a ring flares at your casting hand and a whoosh ring runs along the floor. Projectiles squash and stretch as they launch and leave a bright lagging core trail. On impact there is a white-hot flash, a coloured shockwave, a spray of sparks, a light pop and a small shake, and the target keeps smouldering with embers for a moment.
-- **Still cheap**: everything is pooled. No new lights, materials or meshes are made per shot, and the particles go through the game's existing single-draw particle system. On Low graphics the counts are halved. The casting hand's light no longer gets added and removed on every cast (that used to recompile shaders and caused a small hitch).
+## Single-target ultimates now take the whole room
+31 ultimates that used to hit one enemy were reworked:
+- Cast on every enemy in the room (up to 6 copies, the rest get an echo strike): Marionette Wire, Winter Chrysalis, Compound Debt, Pariah's Mark, Cold Guillotine, Clumsy Colossus, Abyssal Clutch, Crowned Carrier, Overripe, Frozen Recoil, Ticking Seedpod, Iron Embrace, Glacier Harpoon.
+- Cast three times, fanned out around you so they hunt the whole room: Butcher Bird, Gobbling Coffer, Bubble Dance.
+- Ultimates that carry you along (riding, swinging, wearing a body) play once on your target and strike every other enemy in the room with an echo (a beam in its colours, heavy damage, a 2.5 s stun): Falling Lotus, Umbral Tether, Heart in a Box, Bloodline Theft, Rimebound Duel, Body Thief, Unwelcome Guest, Canopy Swing, Breakback Ride, Frozen Hostage, Pain Given Shape, Pierced Before Thrown, Patient Headsman, Grudge Lantern, Red Wake.
+- For these the room-clearing beams wait a moment so you see the ultimate's own effect land first.
 
-## Performance pass
-- Colour grade and vignette drawn inside WebGL at the game's low resolution instead of a full-screen CSS filter.
-- Props, torches and monsters behind walls or past the fog are not drawn and skip their matrix updates.
-- Idle overlay layers (embers canvas, speed/cast/ward/hurt washes) are hidden; the menu blur is removed.
-- Hit effects are pooled and capped; monster bounds are measured once.
-- Low uses 3 torch lights, Medium and phone Auto use 4. Auto starts lower on phones and drops faster. Minimap redraws at ~30 fps.
+## What changed in this version (ultimates)
+- **Every ultimate clears the room**: after its own effect, an ultimate drops a pillar of light on every monster in your room, near you, or in plain sight. Normal monsters and elites die, bosses lose a quarter of their life. It opens with a white flash, three shockwaves and a beam over you. 2-spell fusions kill normal monsters, take 65% off elites and 10% off bosses.
+- **Cooldowns**: an ultimate puts exactly the three spells you fused on a 45 second cooldown, a fusion puts exactly its two spells on 20 seconds. The other spells stay ready. The seconds left show on each locked slot. (PvP uses 60% of these.)
+- **Same-element fusions**: three spells that share an element (for example three fire spells) now fuse. They call an ultimate that carries those elements, always the same one for the same spells. Same for 2-spell fusions.
+- An ultimate whose own effect breaks can no longer skip the room clear.
 
+## Dungeon update
+- Gun effects toned down (smaller flash, no smoke, no shake per shot or per bullet hit). Melee keeps its punch.
+- Health, mana and level bars no longer show through the pause menu, the Book or the shop.
+- Android: move stick, FIRE, spells and LOADOUT sit higher, clear of the bottom bar.
+- Bigger rooms with high ceilings and tactical layouts: pillared halls, barricades, a raised dais, a split wall with chokepoints, storerooms. Stone blocks stop shots, can be climbed, and monsters walk around them.
+- Bosses: more health, a boss bar, three phases with adds and shockwaves, telegraphed attacks (marks, fire lines, rings to jump), decorated halls, two chests on a kill.
+- Wave trials (blue circle, Wave X/N with a timer) and rune plates with vault chests, single player only.
+- Summon (gacha) in the Book: 250 gold for 1, 2250 for 10, 1-5 stars, pity at 50.
+
+## Performance and effects
+- Colour grade in WebGL, hidden props not drawn, idle overlays hidden, pooled hit effects, fewer torch lights on Low/Medium.
+- Muzzle flash, shells, tracers, slash arcs, spell squash-and-stretch, impact bursts and embers, all pooled.
 ## What changed in this version
 - **Graphics**: sharper 64px stone textures with bevelled seams, baked corner shading, brighter and longer-reaching torchlight with halos, shadows under creatures, a light colour grade and vignette (off on the Low setting).
 - **Climb balance**: enemies have less health, hit softer and move a little slower, packs are smaller, elites are rarer, levelling is faster, flasks drop more often, and a fall costs a third of your levels instead of half. Tune it in `DIFF`, `spawnEnemy` and the `budget` line in `buildLevel0`.
